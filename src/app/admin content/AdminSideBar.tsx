@@ -104,7 +104,7 @@ const AdminSideBar = () => {
       children: [
         { id: 'user-wallet', label: 'User Wallet', href: '#' },
         { id: 'wallet-address', label: 'Wallet Address', href: '/admin/newaddress' },
-        { id: 'manual-adjustments', label: 'Manual Adjustments', href: '#' },
+        { id: 'manual-adjustments', label: 'Manual Adjustments', href: '/admin/manualmang' },
         { id: 'wallet-connect', label: 'Wallet-Connet', href: '#' },
       ]
     },

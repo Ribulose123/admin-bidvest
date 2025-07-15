@@ -19,6 +19,16 @@ interface User {
   status: "Active" | "Paused";
 }
 
+// Define the custom label props interface
+interface CustomLabelProps {
+  cx?: number;
+  cy?: number;
+  midAngle?: number;
+  outerRadius?: number;
+  percent?: number;
+  name?: string;
+}
+
 const seededRandom = (seed: number) => {
   const x = Math.sin(seed) * 100;
   return x - Math.floor(x);
@@ -191,20 +201,13 @@ const CopyTradeManage = () => {
   ];
 
   const renderCustomizedLabel = ({
-    cx,
-    cy,
-    midAngle,
-    outerRadius,
-    percent,
-    name,
-  }: {
-    cx: number;
-    cy: number;
-    midAngle: number;
-    outerRadius: number;
-    percent: number;
-    name: string;
-  }) => {
+    cx = 0,
+    cy = 0,
+    midAngle = 0,
+    outerRadius = 0,
+    percent = 0,
+    name = "",
+  }: CustomLabelProps) => {
     const RADIAN = Math.PI / 180;
     const sin = Math.sin(-RADIAN * midAngle);
     const cos = Math.cos(-RADIAN * midAngle);
@@ -280,7 +283,7 @@ const CopyTradeManage = () => {
               </p>
             </div>
             <div className="h-35 w-full">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={150}>
                 <PieChart>
                   <Pie
                     data={pieData}
@@ -318,8 +321,8 @@ const CopyTradeManage = () => {
             Users ({stats.totalUsers})
           </h1>
           {/* Search and Filter Section */}
-          <div className="flex flex-col md:flex-row items-center gap-2  p-4 rounded-lg mb-6">
-            <div className="relative w-full  mb-4 md:mb-0">
+          <div className="flex flex-col md:flex-row items-center gap-2 p-4 rounded-lg mb-6">
+            <div className="relative w-full mb-4 md:mb-0">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
@@ -378,54 +381,53 @@ const CopyTradeManage = () => {
               </tr>
             </thead>
             <tbody>
-              {currentUsers.length > 0 ? (
-                currentUsers.map((user) => (
-                  <tr
-                    key={user.id}
-                    className="hover:bg-[#242938] transition-colors duration-200"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-200">
-                      {user.userId}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-200">
-                      {user.name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                      {user.email}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-300">
-                      {user.totalCopiedTrades.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <span
-                        className={`${
-                          user.profitLoss.includes("-")
-                            ? "text-red-400"
-                            : "text-green-400"
-                        }`}
-                      >
-                        {user.profitLoss}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <span
-                        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          user.status === "Active"
-                            ? "bg-green-900/20 text-green-400"
-                            : "bg-yellow-900/20 text-yellow-400"
-                        }`}
-                      >
-                        {user.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <button className="text-[#00D4AA] hover:text-[#00B894] transition-colors duration-200">
-                        View details
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
+              {currentUsers.map((user) => (
+                <tr
+                  key={user.id}
+                  className="hover:bg-[#242938] transition-colors duration-200"
+                >
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-200">
+                    {user.userId}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-200">
+                    {user.name}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                    {user.email}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-300">
+                    {user.totalCopiedTrades.toLocaleString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <span
+                      className={
+                        user.profitLoss.includes("-")
+                          ? "text-red-400"
+                          : "text-green-400"
+                      }
+                    >
+                      {user.profitLoss}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <span
+                      className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        user.status === "Active"
+                          ? "bg-green-900/20 text-green-400"
+                          : "bg-yellow-900/20 text-yellow-400"
+                      }`}
+                    >
+                      {user.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <button className="text-[#00D4AA] hover:text-[#00B894] transition-colors duration-200">
+                      View details
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {currentUsers.length === 0 && (
                 <tr>
                   <td
                     colSpan={7}
