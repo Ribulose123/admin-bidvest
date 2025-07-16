@@ -65,7 +65,7 @@ const AdminSideBar = () => {
       children: [
         { id: 'manage-users', label: 'Manage Users', href: '/admin/usermanagement' },
         { id: 'trade-management', label: 'Trade Management', href: '/admin/trademangment' },
-        { id: 'manage-copy-experts', label: 'Manage Copy Experts', href: '/admin/copytrademanagement' },
+        { id: 'manage-copy-experts', label: 'Manage Copy Experts', href: '/admin/copytrade' },
         { id: 'KYC Verfication', label: 'KYC Verfication', href: '/admin/kycverfication' }
       ]
     },
@@ -102,7 +102,7 @@ const AdminSideBar = () => {
       icon: <Wallet className="w-5 h-5" />,
       hasDropdown: true,
       children: [
-        { id: 'user-wallet', label: 'User Wallet', href: '#' },
+        { id: 'user-wallet', label: 'User Wallet', href: '/admin/walletoverview' },
         { id: 'wallet-address', label: 'Wallet Address', href: '/admin/newaddress' },
         { id: 'manual-adjustments', label: 'Manual Adjustments', href: '/admin/manualmang' },
         { id: 'wallet-connect', label: 'Wallet-Connet', href: '#' },

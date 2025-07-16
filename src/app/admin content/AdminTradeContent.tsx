@@ -218,8 +218,8 @@ const AdminTradeContent = () => {
                 onChange={(e) => setFilterStatus(e.target.value)}
               >
                 <option value="All">All</option>
-                <option value="Open">Open</option>
-                <option value="Closed">Closed</option>
+                <option value="Active">Active</option>
+                <option value="Frozen">Frozen</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
                 <ChevronDown className="w-4 h-4" />

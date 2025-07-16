@@ -21,6 +21,11 @@ const AdminLogin = () => {
     formState: { errors },
   } = useForm<LoginFormData>();
 
+  
+  const setCookie = (name: string, value: string, ) => {
+    document.cookie = `${name}=${value};path=/;secure;samesite=strict`;
+  };
+
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     setError('');
@@ -45,14 +50,14 @@ const AdminLogin = () => {
       const result = await response.json();
 
       if (result.data?.token) {
-        // Store token and redirect to admin dashboard
-        localStorage.setItem('authToken', result.data.token);
+        // Use cookies instead of localStorage
+        setCookie('authToken', result.data.token);
         router.push('/admin/dashboard');
       } else {
         throw new Error('No token received');
       }
     } catch (err) {
-      setError('Invalid email or password',);
+      setError('Invalid email or password');
       console.error(err);
     } finally {
       setIsLoading(false);
