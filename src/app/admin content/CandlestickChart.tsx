@@ -139,7 +139,7 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data, priceToY, pri
         ref={chartRef} 
         width={width} 
         height={height} 
-        className="w-full h-full"
+        className="w-full ,min-h-full"
       />
     </div>
   );

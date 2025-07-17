@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { TrendingUp, TrendingDown, Eye, EyeOff } from "lucide-react";
 import TradingPlatform from "./TradingPlatform";
+import TradingActivitiesPanel from "./TradingActivitiesPanel";
 
 const Dashboard = () => {
   const [showBalance, setShowBalance] = useState(false);
@@ -141,6 +142,10 @@ const Dashboard = () => {
 
        <div>
         <TradingPlatform/>
+       </div>
+
+       <div className="pt-5">
+        <TradingActivitiesPanel/>
        </div>
       </div>
     </div>

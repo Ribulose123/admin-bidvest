@@ -9,6 +9,8 @@ import React, {
 import ChartSidebar from "./ChartSidebar";
 import TimeframeSelector from "./TimeframeSelector";
 import CandlestickChart from "./CandlestickChart";
+import QuickTrade from "./QuickTrade";
+import TradeHistory from "./TradeHistory";
 
 interface Candle {
   time: string;
@@ -134,32 +136,43 @@ const TradingPlatform = () => {
   );
 
   return (
-    <div className="flex gap-2 p-6">
-      <div className="-ml-5 border-2 border-[#1E1E2F] rounded-lg bg-[#01040F] flex flex-col h-full w-full p-2">
-        <div className="flex flex-col">
-          <div className="ml-5">
-            <TimeframeSelector />
+      <div className="flex gap-4  overflow-hidden pt-4">
+    {/* Left side - Chart (70% width) */}
+    <div className="w-[65%] border-2 border-[#1E1E2F] rounded-lg bg-[#01040F] flex flex-col ">
+      <div className="flex flex-col">
+        <div className="ml-5 pt-2">
+          <TimeframeSelector />
+        </div>
+        <div className="flex flex-1 "> {/* Crucial: min-h-0 prevents overflow */}
+          <div>
+            <ChartSidebar />
           </div>
-          <div className="flex flex-1">
-            <div>
-              <ChartSidebar />
-            </div>
-            {/* chart area */}
-            <div className="h-full">
-              {isClient && chartData.length > 0 && (
-                <CandlestickChart
-                  data={chartData}
-                  priceToY={priceToY}
-                  priceRange={priceRange}
-                  chartMode={chartMode}
-                />
-              )}
-            </div>
+          <div className="flex-1">
+            {isClient && chartData.length > 0 && (
+              <CandlestickChart
+                data={chartData}
+                priceToY={priceToY}
+                priceRange={priceRange}
+                chartMode={chartMode}
+              />
+            )}
           </div>
         </div>
       </div>
-      <TradingPlatform/>
     </div>
+    
+    {/* Right side - Trade Interface (30% width) */}
+    <div className="w-[35%] flex flex-col gap-4 h-full">
+      {/* Quick Trade (60% height) */}
+      <div className="h-[60%] border-2 border-[#1E1E2F] rounded-lg bg-[#01040F] overflow-hidden">
+        <QuickTrade />
+      </div>
+      {/* History (40% height with scroll) */}
+      <div className="h-[40%] border-2 border-[#1E1E2F] rounded-lg bg-[#01040F] overflow-y-auto">
+        <TradeHistory />
+      </div>
+    </div>
+  </div>
   );
 };
 
