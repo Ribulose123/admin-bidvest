@@ -59,6 +59,8 @@ const AdminDeposit = () => {
     left: number;
   } | null>(null);
   const actionMenuRef = useRef<HTMLDivElement>(null);
+   const [showTransactionModal, setShowTransactionModal] = useState<boolean>(false);
+
 
   const filteredDeposit = useMemo(() => {
     return mockDeposits.filter((deposit) => {
@@ -205,8 +207,18 @@ const AdminDeposit = () => {
   const handleView = useCallback(() => {
     alert(`Viewing trade: ${selectedDepositId}`);
     setShowActionMenu(false);
+    setShowTransactionModal(true)
   }, [selectedDepositId]);
 
+   const handleConfirm = useCallback(() => {
+    alert('Transaction confirmed');
+    setShowTransactionModal(false);
+  }, []);
+
+  const handleReject = useCallback(() => {
+    alert('Transaction rejected');
+    setShowTransactionModal(false);
+  }, []);
   const handleDelete = useCallback(() => {
     if (
       window.confirm(
@@ -417,6 +429,154 @@ const AdminDeposit = () => {
             </button>
           </div>
       </div>
+
+           {/* Transaction Details Modal */}
+          {showTransactionModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+                <div className="p-6">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-2">Transaction Details</h2>
+                  <p className="text-sm text-gray-600 mb-6">Pending Deposit Request</p>
+                  
+                  <div className="space-y-4">
+                    {/* Transaction ID */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Transaction ID</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-900 font-mono">TXNS4GXQAB</span>
+                        <button className="w-4 h-4 text-gray-400 hover:text-gray-600">
+                          <svg fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/>
+                            <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Type */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Type</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-900">Deposit</span>
+                        <button className="w-4 h-4 text-gray-400 hover:text-gray-600">
+                          <svg fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/>
+                            <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* User */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">User</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-900">JohnDoe90 (UserID:8563)</span>
+                        <button className="w-4 h-4 text-gray-400 hover:text-gray-600">
+                          <svg fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/>
+                            <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Date Requested */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Date Requested</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-900">April 19, 2035, 12:39 PM UTC</span>
+                        <button className="w-4 h-4 text-gray-400 hover:text-gray-600">
+                          <svg fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/>
+                            <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Amount */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Amount</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-900">1000 USDT</span>
+                        <button className="w-4 h-4 text-gray-400 hover:text-gray-600">
+                          <svg fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/>
+                            <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Currency */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Currency</span>
+                      <span className="text-sm text-gray-900">USDT</span>
+                    </div>
+
+                    {/* Destination Address */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Destination Address</span>
+                      <span className="text-sm text-gray-900">0x6bc...4a56</span>
+                    </div>
+
+                    {/* Source Address */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Source Address</span>
+                      <span className="text-sm text-gray-900">0x6bc...4a56</span>
+                    </div>
+
+                    {/* Payment Method */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Payment Method</span>
+                      <span className="text-sm text-gray-900">Crypto</span>
+                    </div>
+
+                    {/* Transaction Hash */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Transaction Hash</span>
+                      <span className="text-sm text-gray-900">0x6bc...4a56</span>
+                    </div>
+
+                    {/* KYC Status */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">KYC Status</span>
+                      <span className="text-sm text-green-600 font-medium">Verified</span>
+                    </div>
+
+                    {/* IP Address */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">IP Address</span>
+                      <span className="text-sm text-gray-900">192.41.7.XXX</span>
+                    </div>
+
+                    {/* Request Code */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Request Code</span>
+                      <span className="text-sm text-gray-900"></span>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-3 mt-8">
+                    <button
+                      onClick={handleReject}
+                      className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-3 px-4 rounded-lg transition-colors"
+                    >
+                      Reject
+                    </button>
+                    <button
+                      onClick={handleConfirm}
+                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                    >
+                      Confirm
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
     </div>
   </div>
   );

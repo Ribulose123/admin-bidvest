@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { Search, ChevronDown, ChevronRight, ChevronLeft, Plus, MoreHorizontal } from 'lucide-react';
+import AddWalletModal from "./AddWalletModal";
 
 interface GlobalWallet {
   id: string;
@@ -21,6 +22,13 @@ interface UserWallet {
   network: string;
   lastModified: string;
   status: "Active" | "Frozen";
+}
+
+interface WalletData {
+  type: string;
+  address: string;
+  network: string;
+  status: string;
 }
 
 // Generate mock global wallets
@@ -76,6 +84,7 @@ const WalletManagement = () => {
   } | null>(null);
   
   const actionMenuRef = useRef<HTMLDivElement>(null);
+   const [isAddWalletModalOpen, setIsAddWalletModalOpen] = useState(false);
 
   const totalWallets = activeTab === "global" ? globalWallets.length : userWallets.length;
   const lastModified = "21-02-25 14:25 PM UTC";
@@ -227,6 +236,10 @@ const WalletManagement = () => {
     setShowActionMenu(false);
   }, [selectedItemId]);
 
+   const handleAddWallet = (walletData: WalletData) => {
+    console.log('Adding wallet:', walletData);
+    setIsAddWalletModalOpen(false);
+  };
   return (
     <div className="min-h-screen  text-gray-100 p-6">
       <div className="max-w-7xl mx-auto">
@@ -478,6 +491,11 @@ const WalletManagement = () => {
           </div>
         )}
       </div>
+      <AddWalletModal
+      isOpen={isAddWalletModalOpen}
+      onClose = {()=>setIsAddWalletModalOpen(false)}
+      onAdd= {handleAddWallet}
+      />
     </div>
   );
 };

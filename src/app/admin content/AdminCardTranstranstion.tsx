@@ -1,14 +1,10 @@
 "use client";
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   Search,
   ChevronDown,
   ChevronRight,
   ChevronLeft,
-  Eye,
-  Trash2,
-  CheckCircle,
-  XCircle,
 } from "lucide-react";
 
 interface Card {
@@ -57,13 +53,7 @@ const AdminCardTranstranstion = () => {
   const [filterType, setFilterType] = useState<string>("All");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage] = useState<number>(14);
-  const [showActionMenu, setShowActionMenu] = useState<boolean>(false);
-  const [selectedTradeId, setSelectedTradeId] = useState<string | null>(null);
-  const [menuPosition, setMenuPosition] = useState<{
-    top: number;
-    left: number;
-  } | null>(null);
-  const actionMenuRef = useRef<HTMLDivElement>(null);
+ 
 
   const filteredCard = useMemo(() => {
     return mockCards.filter((card) => {
@@ -158,7 +148,7 @@ const AdminCardTranstranstion = () => {
     return buttons;
   }, [currentPage, totalPages, handlePageChange]);
 
-  const handleActionClick = useCallback(
+ /*  const handleActionClick = useCallback(
     (tradeId: string, event: React.MouseEvent<HTMLButtonElement>) => {
       const button = event.currentTarget;
       const rect = button.getBoundingClientRect();
@@ -230,7 +220,7 @@ const AdminCardTranstranstion = () => {
   const handleDecline = useCallback(() => {
     alert(`Declining trade: ${selectedTradeId}`);
     setShowActionMenu(false);
-  }, [selectedTradeId]);
+  }, [selectedTradeId]); */
 
   return (
     <div className="min-h-screen text-gray-100 p-4 md:p-8 font-inter ">
@@ -299,7 +289,6 @@ const AdminCardTranstranstion = () => {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider whitespace-nowrap">Type</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider whitespace-nowrap">Amount</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider whitespace-nowrap">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider whitespace-nowrap">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-700">
@@ -327,14 +316,7 @@ const AdminCardTranstranstion = () => {
                           {card.outcome}
                         </span>
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-center">
-                        <button
-                          className="text-gray-400 hover:text-white focus:outline-none p-1 rounded-md hover:bg-gray-600 transition-colors duration-200"
-                          onClick={(e) => handleActionClick(card.id, e)}
-                        >
-                          <span className="text-xl font-bold">...</span>
-                        </button>
-                      </td>
+                     
                     </tr>
                   ))
                 ) : (
@@ -349,41 +331,7 @@ const AdminCardTranstranstion = () => {
           </div>
 
           {/* Action Menu */}
-          {showActionMenu && selectedTradeId && menuPosition && (
-            <div
-              ref={actionMenuRef}
-              className="fixed z-50 bg-[#141E32] border border-gray-700 rounded-md shadow-lg py-1 w-40"
-              style={{
-                top: `${menuPosition.top}px`,
-                left: `${menuPosition.left}px`,
-              }}
-            >
-              <button
-                onClick={handleView}
-                className="flex items-center px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 w-full text-left transition-colors duration-200"
-              >
-                <Eye className="w-4 h-4 mr-2" /> View
-              </button>
-              <button
-                onClick={handleDelete}
-                className="flex items-center px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 w-full text-left transition-colors duration-200"
-              >
-                <Trash2 className="w-4 h-4 mr-2" /> Delete
-              </button>
-              <button
-                onClick={handleAccept}
-                className="flex items-center px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 w-full text-left transition-colors duration-200"
-              >
-                <CheckCircle className="w-4 h-4 mr-2" /> Accept
-              </button>
-              <button
-                onClick={handleDecline}
-                className="flex items-center px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 w-full text-left transition-colors duration-200"
-              >
-                <XCircle className="w-4 h-4 mr-2" /> Decline
-              </button>
-            </div>
-          )}
+         
         </div>
 
         {/* Pagination */}
