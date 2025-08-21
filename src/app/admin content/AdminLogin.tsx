@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { API_ENDPOINT } from '../config/api';
+import { setAuthToken } from '../utils/auth'; 
 
 interface LoginFormData {
   email: string;
@@ -21,15 +22,12 @@ const AdminLogin = () => {
     formState: { errors },
   } = useForm<LoginFormData>();
 
-  
-  const setCookie = (name: string, value: string, ) => {
-    document.cookie = `${name}=${value};path=/;secure;samesite=strict`;
-  };
+ 
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     setError('');
-    
+
     try {
       const response = await fetch(API_ENDPOINT.AUTH.ADMIN_LOGIN, {
         method: 'POST',
@@ -50,8 +48,7 @@ const AdminLogin = () => {
       const result = await response.json();
 
       if (result.data?.token) {
-        // Use cookies instead of localStorage
-        setCookie('authToken', result.data.token);
+        setAuthToken(result.data.token);
         router.push('/admin/dashboard');
       } else {
         throw new Error('No token received');
@@ -68,7 +65,7 @@ const AdminLogin = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-100 text-black">
       <div className="bg-white p-8 rounded shadow-md w-full max-w-md">
         <h1 className="text-2xl font-bold text-center mb-6">Admin Login</h1>
-        
+
         {error && (
           <div className="mb-4 p-2 bg-red-100 text-red-700 text-sm rounded">
             {error}
@@ -83,7 +80,7 @@ const AdminLogin = () => {
             <input
               id="email"
               type="email"
-              {...register('email', { 
+              {...register('email', {
                 required: 'Email is required',
                 pattern: {
                   value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
@@ -104,7 +101,7 @@ const AdminLogin = () => {
             <input
               id="password"
               type="password"
-              {...register('password', { 
+              {...register('password', {
                 required: 'Password is required',
                 minLength: {
                   value: 6,
