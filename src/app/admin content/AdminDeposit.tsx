@@ -110,7 +110,6 @@ const AdminDeposit = () => {
     fetchAllDepositTransactions();
   }, []);
 
-  // Clear success message after 3 seconds
   useEffect(() => {
     if (successMessage) {
       const timer = setTimeout(() => {
@@ -221,23 +220,26 @@ const AdminDeposit = () => {
     (transactionId: string, event: React.MouseEvent<HTMLButtonElement>) => {
       const button = event.currentTarget;
       const rect = button.getBoundingClientRect();
-
       const viewportWidth = window.innerWidth;
       const menuWidth = 160;
-
-      let left = rect.left + window.scrollX - menuWidth - 10;
-      if (left < 0) {
-        left = rect.right + window.scrollX + 10;
-      }
-
+      
+      // Calculate position to the right of the button first
+      let left = rect.right + window.scrollX + 5;
+      
+      // If menu would go off screen to the right, position to the left
       if (left + menuWidth > viewportWidth) {
-        left = rect.left + window.scrollX - menuWidth - 10;
+        left = rect.left + window.scrollX - menuWidth - 5;
+      }
+      
+      // Ensure menu doesn't go off screen to the left
+      if (left < 0) {
+        left = 5;
       }
 
       setSelectedTransactionId(transactionId);
       setMenuPosition({
         top: rect.bottom + window.scrollY + 5,
-        left: Math.max(10, left),
+        left: left,
       });
       setShowActionMenu(true);
     },
@@ -261,69 +263,59 @@ const AdminDeposit = () => {
     };
   }, []);
 
-  const updateTransactionStatus = useCallback(async (transactionId: string, newStatus: string) => {
+ const updateTransactionStatus = useCallback(async (transactionId: string, newStatus: string) => {
     const token = getAuthToken();
     if (!token) {
-      setError('No authentication token found. Please log in.');
-      return false;
+        setError('No authentication token found. Please log in.');
+        return false;
+    }
+
+    const transactionToUpdate = transactions.find(t => t.id === transactionId);
+    if (!transactionToUpdate) {
+        setError('Transaction not found.');
+        return false;
     }
 
     try {
-      // Use the correct API endpoint format
-      const endpoint = API_ENDPOINT.ADMIN.UPDATE_TRANSACTION.replace('{transactionId}', transactionId);
-      
-      const response = await fetch(endpoint, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ status: newStatus })
-      });
+        const endpoint = API_ENDPOINT.ADMIN.UPDATE_TRANSACTION.replace('{transactionId}', transactionId);
 
-      // Check if response is OK first
-      if (!response.ok) {
-        let errorMessage = `HTTP error! status: ${response.status}`;
-        
-        // Try to parse error response
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch (err) {
-        console.error(err)
-          errorMessage = response.statusText || errorMessage;
+        const response = await fetch(endpoint, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                status: newStatus,
+                amount: transactionToUpdate.amount
+            })
+        });
+
+        const result = await response.json();
+        console.log("Update transaction API result:", result);
+
+        if (response.ok) {
+            // ✅ Update state
+            setTransactions(prev => prev.map(transaction =>
+                transaction.id === transactionId
+                    ? { ...transaction, status: newStatus }
+                    : transaction
+            ));
+
+            setError(null);
+            setSuccessMessage(result.message || `Transaction status updated to ${newStatus} successfully!`);
+            return true;
+        } else {
+            throw new Error(result.message || `Failed to update transaction status (HTTP ${response.status})`);
         }
-        
-        throw new Error(errorMessage);
-      }
-
-      // Parse successful response
-      const result = await response.json();
-      
-      if (result.statusCode === 200) {
-        console.log("Transaction updated successfully:", result);
-        setTransactions(prev => prev.map(transaction =>
-          transaction.id === transactionId
-            ? { ...transaction, status: newStatus }
-            : transaction
-        ));
-        setError(null);
-        setSuccessMessage(`Transaction status updated to ${newStatus} successfully!`);
-        return true;
-      } else {
-        throw new Error(result.message || 'Failed to update transaction status');
-      }
 
     } catch (err) {
-      console.error("Failed to update transaction status:", err);
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('An unknown error occurred while updating transaction status.');
-      }
-      return false;
+        console.error("Failed to update transaction status:", err);
+        setError(err instanceof Error ? err.message : 'An unknown error occurred while updating transaction status.');
+        return false;
     }
-  }, [ setError]);
+}, [transactions, setError]);
+
 
   const deleteTransaction = useCallback(async (transactionId: string) => {
     const token = getAuthToken();
@@ -333,7 +325,6 @@ const AdminDeposit = () => {
     }
 
     try {
-      // Use the correct DELETE endpoint
       const endpoint = API_ENDPOINT.TRANSACTION.DELETE_TRANSACTIONS.replace('{id}', transactionId);
       
       const response = await fetch(endpoint, {
@@ -444,10 +435,15 @@ const AdminDeposit = () => {
   return (
     <div className="min-h-screen text-gray-100 p-8 font-inter ">
       <div className="max-w-7xl mx-auto">
-        {/* Success Message */}
         {successMessage && (
           <div className="mb-4 p-4 bg-green-800 text-green-200 rounded-lg">
             {successMessage}
+          </div>
+        )}
+        
+        {error && (
+          <div className="mb-4 p-4 bg-red-800 text-red-200 rounded-lg">
+            Error: {error}
           </div>
         )}
         
@@ -504,12 +500,6 @@ const AdminDeposit = () => {
         {isLoading && (
           <div className="text-center py-12">
             <p className="text-gray-400 text-lg">Loading transactions...</p>
-          </div>
-        )}
-
-        {error && (
-          <div className="text-center py-12">
-            <p className="text-red-400 text-lg">Error: {error}</p>
           </div>
         )}
 
@@ -751,7 +741,8 @@ const AdminDeposit = () => {
                       <><Loader className="w-4 h-4 mr-2 animate-spin" /> Rejecting...</>
                     ) : (
                       'Reject'
-                    )}
+                    )
+                    }
                   </button>
                   <button
                     onClick={handleConfirm}
