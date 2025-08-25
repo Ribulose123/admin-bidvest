@@ -200,16 +200,9 @@ const SignalManagement: React.FC = () => {
 
   useEffect(() => {
     const fetchSignals = async () => {
-      console.log('Fetching signals...');
+     
 
-      const apiBaseUrl = API_ENDPOINT.SIGNAL.GET_ALL_SIGNAL.split('/signal')[0];
-      if (!apiBaseUrl) {
-        const errorMessage = 'API_BASE_URL is not defined. Please check your environment variables.';
-        console.error(errorMessage);
-        setError(errorMessage);
-        setIsLoading(false);
-        return;
-      }
+     
       
       const token = getAuthToken();
       setIsLoading(true);
@@ -354,7 +347,6 @@ const SignalManagement: React.FC = () => {
 
       const result = await response.json();
       if (result.data) {
-        // Update the state with the new data from the server
         setSignals(prevSignals => 
           prevSignals.map(signal => 
             signal.id === result.data.id ? result.data : signal

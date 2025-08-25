@@ -114,9 +114,9 @@ const AdminSideBar = () => {
       icon: <BarChart3 className="w-5 h-5" />,
       hasDropdown: true,
       children: [
-        { id: 'posts', label: 'Posts', href: '#' },
+        { id: 'subscription', label: 'Subscription', href: '/admin/subscription' },
         { id: 'signals', label: 'Signals', href: '/admin/signal' },
-        { id: 'stakes', label: 'Stakes', href: '#' }
+        { id: 'stakes', label: 'Stakes', href: '/admin/stake' }
       ]
     },
     {

@@ -43,72 +43,78 @@ const AdminDeposit = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const actionMenuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const fetchAllDepositTransactions = async () => {
-      const token = getAuthToken();
-      setIsLoading(true);
-      setError(null);
+useEffect(() => {
+  const fetchFilteredTransactions = async () => {
+    const token = getAuthToken();
+    setIsLoading(true);
+    setError(null);
 
-      if (!token) {
-        setError('No authentication token found. Please log in.');
-        setIsLoading(false);
-        return;
-      }
+    if (!token) {
+      setError('No authentication token found. Please log in.');
+      setIsLoading(false);
+      return;
+    }
 
-      try {
-        let allDepositTransactions: Transaction[] = [];
-        let currentPage = 1;
-        let totalPages = 1;
-        let hasMorePages = true;
+    try {
+      let allFilteredTransactions: Transaction[] = [];
+      let currentPage = 1;
+      let totalPages = 1;
+      let hasMorePages = true;
 
-        while (hasMorePages && currentPage <= totalPages) {
-          const response = await fetch(
-            `${API_ENDPOINT.TRANSACTION.GET_TRANSACTIONS}?page=${currentPage}&limit=50`,
-            {
-              method: 'GET',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              }
+      const allowedTypes = [
+        "DEPOSIT",
+        "SIGNALS",
+        "STAKING",
+        "SUBSCRIPTION"
+      ];
+
+      while (hasMorePages && currentPage <= totalPages) {
+        const response = await fetch(
+          `${API_ENDPOINT.TRANSACTION.GET_TRANSACTIONS}?page=${currentPage}&limit=50`,
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
             }
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (result.statusCode === 200 && result.data) {
+          const filteredTransactions = result.data.filter(
+            (transaction: Transaction) => allowedTypes.includes(transaction.type)
           );
 
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
+          allFilteredTransactions = [...allFilteredTransactions, ...filteredTransactions];
 
-          const result = await response.json();
-
-          if (result.statusCode === 200 && result.data) {
-            const depositTransactions = result.data.filter(
-              (transaction: Transaction) => transaction.type === "DEPOSIT"
-            );
-
-            allDepositTransactions = [...allDepositTransactions, ...depositTransactions];
-
-            totalPages = result.pagination?.totalPages || 1;
-            hasMorePages = result.pagination?.hasNextPage || false;
-            currentPage++;
-          } else {
-            throw new Error(result.message || 'Failed to fetch transactions');
-          }
-        }
-
-        setTransactions(allDepositTransactions);
-
-      } catch (err) {
-        if (err instanceof Error) {
-          setError(err.message);
+          totalPages = result.pagination?.totalPages || 1;
+          hasMorePages = result.pagination?.hasNextPage || false;
+          currentPage++;
         } else {
-          setError('An unknown error occurred while fetching transactions.');
+          throw new Error(result.message || 'Failed to fetch transactions');
         }
-      } finally {
-        setIsLoading(false);
       }
-    };
 
-    fetchAllDepositTransactions();
-  }, []);
+      setTransactions(allFilteredTransactions);
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unknown error occurred while fetching transactions.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  fetchFilteredTransactions();
+}, []);
 
   useEffect(() => {
     if (successMessage) {
