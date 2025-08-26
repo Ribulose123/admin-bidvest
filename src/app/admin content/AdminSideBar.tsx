@@ -92,7 +92,7 @@ const AdminSideBar = () => {
       icon: <Trash2 className="w-5 h-5" />,
       hasDropdown: true,
       children: [
-        { id: 'pending-withdrawals', label: 'Withdrawals Settings', href: '#' },
+        { id: 'pending-withdrawals', label: 'Withdrawals Settings', href: '/admin/withdrawalsettings' },
         { id: 'withdrawal-history', label: 'Code Settings (2FA)', href: '#' }
       ]
     },

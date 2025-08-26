@@ -1,6 +1,7 @@
 'use client'
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Search, ChevronDown, ChevronRight, ChevronLeft, Eye, Trash2, CheckCircle, XCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface Trade {
   id: string;
@@ -47,6 +48,7 @@ const AdminTradeContent = () => {
   const [menuPosition, setMenuPosition] = useState<{top: number, left: number} | null>(null);
   const actionMenuRef = useRef<HTMLDivElement>(null);
 
+  const router = useRouter();
   const filteredTrades = useMemo(() => {
     return mockTrades.filter(trade => {
       const matchesSearch = searchTerm === '' ||
@@ -114,6 +116,7 @@ const AdminTradeContent = () => {
   }, [currentPage, totalPages, handlePageChange]);
 
   const handleActionClick = useCallback((tradeId: string, event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
     const button = event.currentTarget;
     const rect = button.getBoundingClientRect();
     
@@ -178,6 +181,9 @@ const AdminTradeContent = () => {
     setShowActionMenu(false);
   }, [selectedTradeId]);
 
+  const handleNavigation= (id:string)=>{
+    router.push(`/admin/trademangment/${id}`)
+  }
   return (
     <div className="min-h-screen  text-gray-100 p-8 font-inter">
       <div className="max-w-7xl mx-auto">
@@ -247,7 +253,7 @@ const AdminTradeContent = () => {
             <tbody >
               {currentTrades.length > 0 ? (
                 currentTrades.map((trade) => (
-                  <tr key={trade.id} className="hover:bg-gray-700 transition-colors duration-200">
+                  <tr key={trade.id} className="hover:bg-gray-700 transition-colors duration-200" onClick={()=>handleNavigation(trade.id)}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-200">{trade.userId}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{trade.date}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{trade.asset}</td>

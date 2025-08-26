@@ -1,6 +1,7 @@
 'use client'
 import React, { useMemo, useState, useCallback, useEffect , useRef} from "react";
 import { Search, ChevronDown, ChevronRight, ChevronLeft, Eye, Trash2, CheckCircle, XCircle } from 'lucide-react';
+import { useRouter } from "next/navigation";
 
 interface User {
   id: string;
@@ -46,6 +47,7 @@ const AdminUserManagement = () => {
   } | null>(null);
   const actionMenuRef = useRef<HTMLDivElement>(null);
 
+  const router = useRouter();
   const filteredUsers = useMemo(()=>{
     return mockUser.filter(user => {
         const matchesSearch = searchTerm === '' ||
@@ -114,10 +116,11 @@ const AdminUserManagement = () => {
 
   
     const handleActionClick = useCallback((tradeId: string, event: React.MouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation();
       const button = event.currentTarget;
       const rect = button.getBoundingClientRect();
       
-      // Calculate position relative to viewport
+      
       const viewportWidth = window.innerWidth;
       const menuWidth = 160; 
   
@@ -177,6 +180,10 @@ const AdminUserManagement = () => {
       alert(`Declining trade: ${selectedTradeId}`);
       setShowActionMenu(false);
     }, [selectedTradeId]);
+
+    const handNavigation = (id:string)=>{
+        router.push(`/admin/usermanagement/${id}`)
+    }
   return(
      <div className="min-h-screen  text-gray-100 p-8 font-inter">
           <div className="max-w-7xl mx-auto">
@@ -230,7 +237,7 @@ const AdminUserManagement = () => {
                 <tbody >
                   {currentUsers.length > 0 ? (
                     currentUsers.map((user) => (
-                      <tr key={user.id} className="hover:bg-gray-700 transition-colors duration-200">
+                      <tr key={user.id} className="hover:bg-gray-700 transition-colors duration-200 cursor-pointer" onClick={()=>handNavigation(user.id)}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-200">{user.userId}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-200">{user.email}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{user.joined}</td>
