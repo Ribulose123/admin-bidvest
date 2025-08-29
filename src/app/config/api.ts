@@ -32,5 +32,9 @@ export const API_ENDPOINT={
     },
     ADMIN:{
         UPDATE_TRANSACTION:`${API_BASE_URL}/admin/transaction/{transactionId}`
+    },
+
+    USER:{
+        GET_ALL_USERS:`${API_BASE_URL}/user/get-user`
     }
 }

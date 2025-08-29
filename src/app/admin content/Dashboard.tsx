@@ -61,11 +61,11 @@ const Dashboard = () => {
     setShowTotal(!showTotal);
   };
   return (
-    <div className="min-h-screen text-gray-100 p-8 font-inter">
+    <div className="min-h-screen text-gray-100 p-8 font-inter mx-auto">
       <div className="mx-auto max-w-7xl">
         {/* Header */}
         {/* Total Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 w-full max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 w-full ">
           {balanceCards.map((card, index) => (
             <div
               key={index}
@@ -103,7 +103,7 @@ const Dashboard = () => {
           ))}
         </div>
 
-       <div className="grid grid-cols-2 gap-6 w-full max-w-6xl mx-autol">
+       <div className="grid grid-cols-2 gap-6 w-full ">
          {TotalUsd.map((total, index)=>(
           <div key={index} className="bg-linear-to-bl from-[#141E323D] to-[#01040F] rounded-lg p-6 border border-gray-700 w-full min-w-[250px]">
             <div className="flex justify-between">

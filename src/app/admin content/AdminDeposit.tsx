@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { getAuthToken } from "../utils/auth";
 import { API_ENDPOINT } from "../config/api";
+import { useRouter } from "next/navigation";
 
 interface Transaction {
   id: string;
@@ -42,7 +43,7 @@ const AdminDeposit = () => {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const actionMenuRef = useRef<HTMLDivElement>(null);
-
+  const router = useRouter();
 useEffect(() => {
   const fetchFilteredTransactions = async () => {
     const token = getAuthToken();
@@ -224,6 +225,7 @@ useEffect(() => {
 
   const handleActionClick = useCallback(
     (transactionId: string, event: React.MouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation();
       const button = event.currentTarget;
       const rect = button.getBoundingClientRect();
       const viewportWidth = window.innerWidth;
@@ -438,6 +440,9 @@ useEffect(() => {
     return ['All', ...types];
   }, [transactions]);
 
+  const handleNavigation = (id:string)=>{
+    router.push(`/admin/deposit/${id}`)
+  }
   return (
     <div className="min-h-screen text-gray-100 p-8 font-inter ">
       <div className="max-w-7xl mx-auto">
@@ -540,6 +545,7 @@ useEffect(() => {
                   currentTransactions.map((transaction) => (
                     <tr
                       key={transaction.id}
+                      onClick={()=>handleNavigation(transaction.id)}
                       className="hover:bg-gray-700 transition-colors duration-200"
                     >
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-200">

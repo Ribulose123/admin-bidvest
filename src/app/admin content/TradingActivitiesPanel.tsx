@@ -167,7 +167,7 @@ const TradingActivitiesPanel: React.FC = () => {
   );
 
   return (
-    <div className="bg-gray-900 text-white p-6 rounded-lg shadow-xl max-w-6xl mx-auto pt-4 ">
+    <div className="bg-gray-900 text-white p-6 rounded-lg shadow-xl  pt-4 ">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
