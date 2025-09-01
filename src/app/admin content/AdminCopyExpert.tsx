@@ -1,135 +1,145 @@
-import React from "react";
-import Image from "next/image";
-import {
-  Calendar,
-  CircleDollarSign,
-  Wallet,
-  PieChart,
-  Share2,
-  Heart,
-} from "lucide-react";
+"use client";
+import React, { useEffect, useState } from "react";
 import CopyTable from "./CopyTable";
 import CopyPerson from "./CopyPerson";
 import Usersdetails from "./Usersdetails";
+import { getAuthToken } from "../utils/auth";
+import { API_ENDPOINT } from "../config/api";
 
-// Define the copyData object with all required properties
+interface TraderFollower {
+  id: string;
+}
+
+interface TraderPerformance {
+  id: string;
+}
+
+interface TraderTrade {
+  id: string;
+}
+
+interface TraderSocialMetrics {
+  id: string;
+}
+
+interface UserFavoriteTrader {
+  id: string;
+}
+
+interface Trade {
+  id: string;
+}
+
+interface Trader {
+  id: string;
+  username: string;
+  profilePicture?: string;
+  status: "ACTIVE" | "PAUSED";
+  maxCopiers: number;
+  currentCopiers: number;
+  totalCopiers: number;
+  totalPnL: number;
+  copiersPnL: number;
+  aum: number;
+  riskScore: number;
+  badges?: string[];
+  isPublic: boolean;
+  commissionRate: number;
+  minCopyAmount: number;
+  maxCopyAmount?: number;
+  tradingPairs: string[];
+  followers: TraderFollower[];
+  performances: TraderPerformance[];
+  trades: TraderTrade[];
+  socialMetrics?: TraderSocialMetrics;
+  favoritedBy: UserFavoriteTrader[];
+  actualTrades: Trade[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 const copyData = {
   completionRate: "98.5%",
   profitPercentage: "+42.13%",
   totalPnL: "$163,152.56",
   openPnL: "$33,942.76",
   win: 12,
-  lose: 4
+  lose: 4,
 };
 
 const AdminCopyExpert = () => {
+  const [traders, setTraders] = useState<Trader[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchTrader = async () => {
+      const token = getAuthToken();
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch(API_ENDPOINT.TRADERS.GET_ALL_TRADERS, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch traders: ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (result.data && Array.isArray(result.data.traders)) {
+          const mappedTraders = result.data.traders.map((trader: Trader) => ({
+            ...trader,
+            createdAt: new Date(trader.createdAt),
+            updatedAt: new Date(trader.updatedAt),
+          }));
+          setTraders(mappedTraders);
+        } else {
+          throw new Error("Invalid data format received from API");
+        }
+      } catch (err) {
+        console.error("Failed to fetch traders", err);
+        setError(err instanceof Error ? err.message : "An unknown error occurred.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchTrader();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="mt-6">
+        <div className="flex justify-center items-center h-64">
+          <p className="text-white">Loading traders...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return <div>Failed</div>;
+  }
+  
   return (
     <div className="min-h-full p-4 sm:p-6 md:p-8 ">
       <div className="mx-auto max-w-7xl">
-        {/* User info section */}
-        <div className="flex flex-col md:flex-row justify-between gap-6 bg-[#141E32]/25 rounded-xl p-4 md:p-6 border border-[#1E2A4A]">
-          {/* Left side */}
-          <div className="flex-1 flex flex-col sm:flex-row gap-6">
-            {/* Avatar */}
-            <div className="flex-shrink-0">
-              <Image
-                src="/img/Avatar DP.png"
-                alt="profile"
-                width={100}
-                height={100}
-                className="rounded-full border-2 border-[#439A86] object-cover"
-                priority
-              />
-            </div>
-
-            <div className="flex-1 space-y-3">
-              <div>
-                <h3 className="text-white text-xl font-bold">Mr_profits</h3>
-                <div className="flex items-center gap-2 text-sm">
-                  <p className="text-[#797A80] border-r border-[#797A80] pr-2">
-                    @HappyPlanets
-                  </p>
-                  <p className="flex items-center text-[#797A80] gap-1">
-                    <Calendar size={13} />
-                    Registered 626 day(s) ago
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-4 pt-2">
-                <div className="border-r border-[#797A80] pr-4">
-                  <p className="text-[#797A80] text-sm">Followers</p>
-                  <h3 className="text-white text-lg font-bold">12</h3>
-                </div>
-                <div className="border-r border-[#797A80] pr-4">
-                  <p className="text-[#797A80] text-sm">Trading Days</p>
-                  <h3 className="text-white text-lg font-bold">33</h3>
-                </div>
-                <div className="border-r border-[#797A80] pr-4">
-                  <p className="text-[#797A80] text-sm">Stability Index</p>
-                  <h3 className="text-white text-lg font-bold">
-                    255<span className="text-xs">/50</span>
-                  </h3>
-                </div>
-                <div>
-                  <p className="text-[#797A80] text-sm">7 Day(s)</p>
-                  <h3 className="text-white text-lg font-bold">270</h3>
-                </div>
-              </div>
-
-              {/* Financial info */}
-              <div className="flex flex-wrap items-center gap-4 pt-2 text-sm">
-                <div className="flex items-center gap-1 border-r border-[#797A80] pr-4">
-                  <CircleDollarSign size={13} className="text-[#797A80]" />
-                  <p className="text-[#797A80] font-medium">
-                    AUM 1,149.00 USDT
-                  </p>
-                </div>
-                <div className="flex items-center gap-1 border-r border-[#797A80] pr-4">
-                  <Wallet size={13} className="text-[#797A80]" />
-                  <p className="text-[#797A80] font-medium">
-                    Total Assets 933.20 USDT
-                  </p>
-                </div>
-                <div className="flex items-center gap-1">
-                  <PieChart size={13} className="text-[#797A80]" />
-                  <p className="text-[#797A80] font-medium">
-                    Profit Sharing 10%
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Right section - Actions */}
-          <div className="flex flex-col md:items-end items-start gap-4 mt-2 mb-4 md:mt-0 md:mb-0">
-            <div className="flex items-center gap-4">
-              <button className="flex items-center gap-1 text-[#E8E8E8] hover:text-white transition-colors">
-                <Share2 size={15} />
-                <span className="text-sm">Share</span>
-              </button>
-              <button className="flex items-center gap-1 text-[#E8E8E8] hover:text-white transition-colors">
-                <Heart size={15} />
-                <span className="text-sm">Subscribe</span>
-              </button>
-            </div>
-            <button className="bg-gradient-to-r from-[#439A86] to-[#3a8a77] hover:from-[#3a8a77] hover:to-[#327a68] text-white font-medium py-3 px-6 rounded-lg transition-all duration-300 shadow-md hover:shadow-[#439A86]/30">
-              Copy Trader
-            </button>
-          </div>
-        </div>
-
-        {/* Table content */}
         <div className="mt-6">
-          <CopyTable />
+          <CopyTable 
+          copyTrade={traders}
+          setTraders ={setTraders}
+           />
         </div>
 
-        {/* Copy card */}
         <div className="mt-6">
           <CopyPerson />
         </div>
 
-        {/* Chart */}
         <div className="mt-6">
           <Usersdetails copyData={copyData} />
         </div>

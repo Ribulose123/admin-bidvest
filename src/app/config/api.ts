@@ -36,5 +36,10 @@ export const API_ENDPOINT={
 
     USER:{
         GET_ALL_USERS:`${API_BASE_URL}/user/get-user`
+    },
+    TRADERS:{
+        GET_ALL_TRADERS:`${API_BASE_URL}/trade/user/traders`,
+        GET_ALL_TRADERS_DETAILS:`${API_BASE_URL}/trade/user/trader/{traderId}`,
+        ADD_TRADERS:`${API_BASE_URL}/trade/create-trader`
     }
 }
