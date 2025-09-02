@@ -2,64 +2,30 @@ import Image from 'next/image';
 import React, { useState, ChangeEvent, FormEvent } from 'react';
 import { Camera } from 'lucide-react';
 
-
-interface TraderFollower {
-  id: string;
-}
-
-interface TraderPerformance {
-  id: string;
-}
-
-interface TraderTrade {
-  id: string;
-}
-
-interface TraderSocialMetrics {
-  id: string;
-}
-
-interface UserFavoriteTrader {
-  id: string;
-}
-
-interface Trade {
-  id: string;
-}
-
-// Main Trader interface
-interface Trader {
-  id: string;
+// Interface for the trader creation data
+interface CreateTraderData {
   username: string;
-  profilePicture?: string;
+  displayName: string;
   status: "ACTIVE" | "PAUSED";
   maxCopiers: number;
-  currentCopiers: number;
-  totalCopiers: number;
-  totalPnL: number;
-  copiersPnL: number;
-  aum: number;
-  riskScore: number;
-  badges?: string[];
   isVerified: boolean;
   isPublic: boolean;
   commissionRate: number;
   minCopyAmount: number;
   maxCopyAmount?: number;
   tradingPairs: string[];
-  followers: TraderFollower[];
-  performances: TraderPerformance[];
-  trades: TraderTrade[];
-  socialMetrics?: TraderSocialMetrics;
-  favoritedBy: UserFavoriteTrader[];
-  actualTrades: Trade[];
-  createdAt: Date;
-  updatedAt: Date;
+  strategy: string;
+  atrRoll: string;
+  winRate: string;
+  profitSharing: string;
+  followers: string;
+  description: string;
+  profilePicture?: File | null;
 }
 
 interface AddTraderFormProps {
   onClose: () => void;
-  onTraderAdded: (trader: Trader) => void;
+  onTraderAdded: (traderData: CreateTraderData) => void;
   isLoading?: boolean;
 }
 
@@ -142,38 +108,28 @@ const AddTraderForm: React.FC<AddTraderFormProps> = ({ onClose, onTraderAdded, i
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     
-    // Create a temporary Trader object with default values
-    // The actual API call should return the full Trader object
-    const tempTrader: Trader = {
-      id: `temp-${Date.now()}`, // Temporary ID
+    // Prepare the data for the API call
+    const traderData: CreateTraderData = {
       username: formData.username,
-      profilePicture: imagePreview || undefined,
+      displayName: formData.displayName,
       status: formData.status,
       maxCopiers: Number(formData.maxCopiers) || 0,
-      currentCopiers: 0,
-      totalCopiers: 0,
-      totalPnL: 0,
-      copiersPnL: 0,
-      aum: 0,
-      riskScore: 0,
-      badges: [],
       isVerified: formData.isVerified,
       isPublic: formData.isPublic,
       commissionRate: Number(formData.commissionRate) || 0,
       minCopyAmount: Number(formData.minCopyAmount) || 0,
       maxCopyAmount: formData.maxCopyAmount ? Number(formData.maxCopyAmount) : undefined,
       tradingPairs: formData.tradingPairs.split(',').map(pair => pair.trim()).filter(Boolean),
-      followers: [],
-      performances: [],
-      trades: [],
-      socialMetrics: undefined,
-      favoritedBy: [],
-      actualTrades: [],
-      createdAt: new Date(),
-      updatedAt: new Date()
+      strategy: formData.strategy,
+      atrRoll: formData.atrRoll,
+      winRate: formData.winRate,
+      profitSharing: formData.profitSharing,
+      followers: formData.followers,
+      description: formData.description,
+      profilePicture: formData.profilePicture
     };
     
-    onTraderAdded(tempTrader);
+    onTraderAdded(traderData);
   };
 
   const handleCancel = () => {
