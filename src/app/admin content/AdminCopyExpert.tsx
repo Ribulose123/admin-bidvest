@@ -1,10 +1,11 @@
-'use client'
+"use client";
 import React, { useEffect, useMemo, useState } from "react";
 import { ArrowRight, ChevronDown, Plus, Search } from "lucide-react";
 import { API_ENDPOINT } from "../config/api";
 import { getAuthToken } from "../utils/auth";
 import CopyPerson from "./CopyPerson";
 import AddTraderForm from "./modal/AddTraderForm";
+import SyncFollowerModal from "./modal/SyncFollowerModal";
 
 // Define the nested interfaces
 interface TraderFollower {
@@ -60,10 +61,8 @@ interface Trader {
   updatedAt: Date;
 }
 
-// Interface for the trader creation data
 interface CreateTraderData {
   username: string;
-  displayName: string;
   status: "ACTIVE" | "PAUSED";
   maxCopiers: number;
   isVerified: boolean;
@@ -72,16 +71,9 @@ interface CreateTraderData {
   minCopyAmount: number;
   maxCopyAmount?: number;
   tradingPairs: string[];
-  strategy: string;
-  atrRoll: string;
-  winRate: string;
-  profitSharing: string;
-  followers: string;
-  description: string;
-  profilePicture?: File | null;
 }
 
-type ModalState = 'idle' | 'deleting' | 'success' | 'error';
+type ModalState = "idle" | "deleting" | "success" | "error";
 
 const DeleteConfirmationModal: React.FC<{
   isOpen: boolean;
@@ -95,29 +87,51 @@ const DeleteConfirmationModal: React.FC<{
 
   const renderContent = () => {
     switch (modalState) {
-      case 'deleting':
+      case "deleting":
         return (
           <>
-            <h2 className="text-xl font-bold text-white mb-4">Deleting Trader</h2>
+            <h2 className="text-xl font-bold text-white mb-4">
+              Deleting Trader
+            </h2>
             <div className="flex flex-col items-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#F2AF29] mb-4"></div>
               <p className="text-gray-300 text-center">
-                Removing <span className="font-semibold text-[#F2AF29]">{traderName}</span>...
+                Removing{" "}
+                <span className="font-semibold text-[#F2AF29]">
+                  {traderName}
+                </span>
+                ...
               </p>
             </div>
           </>
         );
-      
-      case 'success':
+
+      case "success":
         return (
           <>
-            <h2 className="text-xl font-bold text-white mb-4">Successfully Deleted</h2>
+            <h2 className="text-xl font-bold text-white mb-4">
+              Successfully Deleted
+            </h2>
             <div className="flex flex-col items-center">
-              <svg className="w-12 h-12 text-green-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+              <svg
+                className="w-12 h-12 text-green-500 mb-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M5 13l4 4L19 7"
+                ></path>
               </svg>
               <p className="text-gray-300 text-center">
-                <span className="font-semibold text-[#F2AF29]">{traderName}</span> has been successfully removed.
+                <span className="font-semibold text-[#F2AF29]">
+                  {traderName}
+                </span>{" "}
+                has been successfully removed.
               </p>
             </div>
             <div className="flex justify-end mt-6">
@@ -130,19 +144,40 @@ const DeleteConfirmationModal: React.FC<{
             </div>
           </>
         );
-      
-      case 'error':
+
+      case "error":
         return (
           <>
-            <h2 className="text-xl font-bold text-white mb-4">Deletion Failed</h2>
+            <h2 className="text-xl font-bold text-white mb-4">
+              Deletion Failed
+            </h2>
             <div className="flex flex-col items-center">
-              <svg className="w-12 h-12 text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+              <svg
+                className="w-12 h-12 text-red-500 mb-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M6 18L18 6M6 6l12 12"
+                ></path>
               </svg>
               <p className="text-gray-300 text-center mb-2">
-                Failed to remove <span className="font-semibold text-[#F2AF29]">{traderName}</span>.
+                Failed to remove{" "}
+                <span className="font-semibold text-[#F2AF29]">
+                  {traderName}
+                </span>
+                .
               </p>
-              {errorMessage && <p className="text-red-400 text-sm text-center">{errorMessage}</p>}
+              {errorMessage && (
+                <p className="text-red-400 text-sm text-center">
+                  {errorMessage}
+                </p>
+              )}
             </div>
             <div className="flex justify-end space-x-4 mt-6">
               <button
@@ -160,13 +195,17 @@ const DeleteConfirmationModal: React.FC<{
             </div>
           </>
         );
-      
+
       default:
         return (
           <>
-            <h2 className="text-xl font-bold text-white mb-4">Confirm Deletion</h2>
+            <h2 className="text-xl font-bold text-white mb-4">
+              Confirm Deletion
+            </h2>
             <p className="text-gray-300 mb-6">
-              Are you sure you want to remove <span className="font-semibold text-[#F2AF29]">{traderName}</span>? This action cannot be undone.
+              Are you sure you want to remove{" "}
+              <span className="font-semibold text-[#F2AF29]">{traderName}</span>
+              ? This action cannot be undone.
             </p>
             <div className="flex justify-end space-x-4">
               <button
@@ -204,26 +243,28 @@ const AdminCopyExpert = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showAddTraderModal, setShowAddTraderModal] = useState(false);
   const [traderToDelete, setTraderToDelete] = useState<Trader | null>(null);
-  const [modalState, setModalState] = useState<ModalState>('idle');
-  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [modalState, setModalState] = useState<ModalState>("idle");
+  const [errorMessage, setErrorMessage] = useState<string>("");
   const [isAddingTrader, setIsAddingTrader] = useState(false);
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [traderToSync, setTraderToSync] = useState<Trader | null>(null);
 
   const toast = React.useCallback((message: string, isError = false) => {
-    const toastDiv = document.createElement('div');
+    const toastDiv = document.createElement("div");
     toastDiv.textContent = message;
-    toastDiv.style.position = 'fixed';
-    toastDiv.style.bottom = '20px';
-    toastDiv.style.right = '20px';
-    toastDiv.style.padding = '10px 20px';
-    toastDiv.style.borderRadius = '8px';
-    toastDiv.style.backgroundColor = isError ? '#F23645' : '#01BC8D';
-    toastDiv.style.color = 'white';
-    toastDiv.style.zIndex = '1000';
-    toastDiv.style.transition = 'opacity 0.5s ease-in-out';
+    toastDiv.style.position = "fixed";
+    toastDiv.style.bottom = "20px";
+    toastDiv.style.right = "20px";
+    toastDiv.style.padding = "10px 20px";
+    toastDiv.style.borderRadius = "8px";
+    toastDiv.style.backgroundColor = isError ? "#F23645" : "#01BC8D";
+    toastDiv.style.color = "white";
+    toastDiv.style.zIndex = "1000";
+    toastDiv.style.transition = "opacity 0.5s ease-in-out";
     document.body.appendChild(toastDiv);
 
     setTimeout(() => {
-      toastDiv.style.opacity = '0';
+      toastDiv.style.opacity = "0";
       setTimeout(() => toastDiv.remove(), 500);
     }, 3000);
   }, []);
@@ -258,7 +299,8 @@ const AdminCopyExpert = () => {
       }
     } catch (err) {
       console.error("Failed to fetch traders", err);
-      const errorMsg = err instanceof Error ? err.message : "An unknown error occurred";
+      const errorMsg =
+        err instanceof Error ? err.message : "An unknown error occurred";
       toast(`Error: ${errorMsg}`, true);
     } finally {
       setIsLoading(false);
@@ -267,30 +309,38 @@ const AdminCopyExpert = () => {
 
   const deleteTrader = async (traderId: string, traderName: string) => {
     const token = getAuthToken();
-    setModalState('deleting');
-    
+    setModalState("deleting");
+
     try {
-      const response = await fetch(API_ENDPOINT.TRADERS.DELETE_TRADERS.replace("{traderId}", traderId), {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+      const response = await fetch(
+        API_ENDPOINT.TRADERS.DELETE_TRADERS.replace("{traderId}", traderId),
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
         }
-      });
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || `Failed to delete trader: ${response.statusText}`);
+        throw new Error(
+          errorData.message || `Failed to delete trader: ${response.statusText}`
+        );
       }
 
-      setTraders(prevTraders => prevTraders.filter(trader => trader.id !== traderId));
-      setModalState('success');
+      setTraders((prevTraders) =>
+        prevTraders.filter((trader) => trader.id !== traderId)
+      );
+      setModalState("success");
       toast(`${traderName} was successfully removed.`);
     } catch (err) {
       console.error("An unknown error occurred while deleting the trader", err);
-      const errorMsg = err instanceof Error ? err.message : "An unknown error occurred";
+      const errorMsg =
+        err instanceof Error ? err.message : "An unknown error occurred";
       setErrorMessage(errorMsg);
-      setModalState('error');
+      setModalState("error");
       toast(`Error: ${errorMsg}`, true);
     }
   };
@@ -298,53 +348,98 @@ const AdminCopyExpert = () => {
   const addTrader = async (traderData: CreateTraderData) => {
     const token = getAuthToken();
     setIsAddingTrader(true);
-    
+
     try {
-      const formData = new FormData();
-      
-      // Append all trader data to formData
-      Object.entries(traderData).forEach(([key, value]) => {
-        if (key === 'profilePicture' && value) {
-          formData.append('profilePicture', value as File);
-        } else if (key === 'tradingPairs' && Array.isArray(value)) {
-          formData.append('tradingPairs', value.join(','));
-        } else if (value !== null && value !== undefined) {
-          formData.append(key, value.toString());
-        }
-      });
-
-      const response = await fetch(API_ENDPOINT.TRADERS.ADD_TRADERS, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Failed to create trader: ${response.statusText}`);
+      // Validate required fields before sending to API
+      if (
+        !traderData.username ||
+        typeof traderData.username !== "string" ||
+        traderData.username.trim() === ""
+      ) {
+        throw new Error("Username must be a non-empty string");
       }
 
+      // Create a clean payload with only the fields the API expects
+      const payload = {
+        username: traderData.username,
+        status: traderData.status,
+        maxCopiers: traderData.maxCopiers,
+        isVerified: traderData.isVerified,
+        isPublic: traderData.isPublic,
+        commissionRate: traderData.commissionRate,
+        minCopyAmount: traderData.minCopyAmount,
+        maxCopyAmount: traderData.maxCopyAmount,
+        tradingPairs: traderData.tradingPairs,
+      };
+
+      // Log the payload for debugging
+      console.log("API Payload:", payload);
+
+      const response = await fetch(API_ENDPOINT.TRADERS.ADD_TRADERS, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
       const result = await response.json();
-      
+
+      if (!response.ok) {
+        const errorMessage =
+          result.message ||
+          result.error ||
+          `Failed to create trader: ${response.statusText}`;
+        throw new Error(errorMessage);
+      }
+
       if (result.data) {
         // Add the new trader to the list
-        setTraders(prevTraders => [...prevTraders, result.data]);
+        setTraders((prevTraders) => [...prevTraders, result.data]);
         setShowAddTraderModal(false);
         toast(`${traderData.username} was successfully added.`);
       } else {
-        throw new Error('Invalid response format from server');
+        throw new Error("Invalid response format from server");
       }
     } catch (err) {
       console.error("Failed to add trader", err);
-      const errorMsg = err instanceof Error ? err.message : "An unknown error occurred";
+      const errorMsg =
+        err instanceof Error ? err.message : "An unknown error occurred";
       toast(`Error: ${errorMsg}`, true);
       throw err; // Re-throw to let the form handle it
     } finally {
       setIsAddingTrader(false);
     }
   };
+
+  const handleSyncFollowers = async(traderId:string)=>{
+    const token =getAuthToken()
+    try{
+      const response = await fetch(API_ENDPOINT.TRADERS.SYNC_FOLLOWERS,{
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ traderId }),
+      })
+
+      if(!response.ok){
+         const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to sync followers');
+      }
+
+      const updateTraderFollower = await response.json()
+      setTraders(prev => prev.map(t => t.id === traderId ? { ...t, currentCopiers: updateTraderFollower.newCount } : t));
+       toast('Followers synced successfully!');
+    }catch(err){
+      console.error('Error syncing followers:', err);
+      const errorMsg = err instanceof Error ? err.message : 'An unknown error occurred.';
+      toast(`Sync failed: ${errorMsg}`, true);
+      throw err;
+    }
+  }
 
   useEffect(() => {
     fetchTraders();
@@ -363,7 +458,7 @@ const AdminCopyExpert = () => {
 
   const handleRemoveClick = (trader: Trader) => {
     setTraderToDelete(trader);
-    setModalState('idle');
+    setModalState("idle");
     setShowConfirmModal(true);
   };
 
@@ -376,7 +471,7 @@ const AdminCopyExpert = () => {
   const handleCloseModal = () => {
     setShowConfirmModal(false);
     setTraderToDelete(null);
-    setModalState('idle');
+    setModalState("idle");
   };
 
   const handleAddTrader = () => {
@@ -387,8 +482,13 @@ const AdminCopyExpert = () => {
     try {
       await addTrader(traderData);
     } catch (error) {
-      console.error(error)
+      console.error(error);
     }
+  };
+
+  const handleSyncClick = (trader: Trader) => {
+    setTraderToSync(trader);
+    setShowSyncModal(true);
   };
 
   if (isLoading) {
@@ -400,7 +500,7 @@ const AdminCopyExpert = () => {
       </div>
     );
   }
-  
+
   return (
     <div className="min-h-full p-4 sm:p-6 md:p-8 ">
       <div className="mx-auto max-w-7xl">
@@ -435,8 +535,8 @@ const AdminCopyExpert = () => {
                     <ChevronDown className="w-4 h-4" />
                   </div>
                 </div>
-                <button 
-                  className="bg-[#F2AF29] hover:bg-[#ff8c00] text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition" 
+                <button
+                  className="bg-[#F2AF29] hover:bg-[#ff8c00] text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition"
                   onClick={handleAddTrader}
                 >
                   Add Trader
@@ -501,14 +601,22 @@ const AdminCopyExpert = () => {
                             {copy.status}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#F23645]">
-                          <button onClick={() => handleRemoveClick(copy)}>Remove</button>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#F23645] flex gap-3 items-center">
+                          <button onClick={() => handleRemoveClick(copy)}>
+                            Remove
+                          </button>
+                          <button onClick={() => handleSyncClick(copy)}>
+                            Sync Followers
+                          </button>
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={7} className="px-6 py-4 text-center text-gray-400">
+                      <td
+                        colSpan={7}
+                        className="px-6 py-4 text-center text-gray-400"
+                      >
                         No Copy trader found.
                       </td>
                     </tr>
@@ -541,6 +649,15 @@ const AdminCopyExpert = () => {
             onClose={() => setShowAddTraderModal(false)}
             onTraderAdded={handleTraderAdded}
             isLoading={isAddingTrader}
+          />
+        )}
+
+        {showSyncModal && traderToSync && (
+          <SyncFollowerModal
+            isOpen={showSyncModal}
+            onClose={() => setShowSyncModal(false)}
+            onSync={handleSyncFollowers}
+            trader={traderToSync}
           />
         )}
       </div>

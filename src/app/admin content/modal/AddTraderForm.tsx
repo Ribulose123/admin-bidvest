@@ -1,11 +1,9 @@
-import Image from 'next/image';
+'use client'
 import React, { useState, ChangeEvent, FormEvent } from 'react';
-import { Camera } from 'lucide-react';
 
-// Interface for the trader creation data
+// Interface for the trader creation data (only fields API accepts)
 interface CreateTraderData {
   username: string;
-  displayName: string;
   status: "ACTIVE" | "PAUSED";
   maxCopiers: number;
   isVerified: boolean;
@@ -14,24 +12,16 @@ interface CreateTraderData {
   minCopyAmount: number;
   maxCopyAmount?: number;
   tradingPairs: string[];
-  strategy: string;
-  atrRoll: string;
-  winRate: string;
-  profitSharing: string;
-  followers: string;
-  description: string;
-  profilePicture?: File | null;
 }
 
 interface AddTraderFormProps {
   onClose: () => void;
-  onTraderAdded: (traderData: CreateTraderData) => void;
+  onTraderAdded: (traderData: CreateTraderData) => Promise<void>;
   isLoading?: boolean;
 }
 
 interface FormData {
   username: string;
-  displayName: string;
   status: "ACTIVE" | "PAUSED";
   maxCopiers: string;
   isVerified: boolean;
@@ -40,19 +30,11 @@ interface FormData {
   minCopyAmount: string;
   maxCopyAmount: string;
   tradingPairs: string;
-  strategy: string;
-  atrRoll: string;
-  winRate: string;
-  profitSharing: string;
-  followers: string;
-  description: string;
-  profilePicture?: File | null;
 }
 
 const AddTraderForm: React.FC<AddTraderFormProps> = ({ onClose, onTraderAdded, isLoading = false }) => {
   const [formData, setFormData] = useState<FormData>({
     username: '',
-    displayName: '',
     status: 'ACTIVE',
     maxCopiers: '',
     isVerified: false,
@@ -61,57 +43,66 @@ const AddTraderForm: React.FC<AddTraderFormProps> = ({ onClose, onTraderAdded, i
     minCopyAmount: '',
     maxCopyAmount: '',
     tradingPairs: '',
-    strategy: 'Short-Term Scalping',
-    atrRoll: '',
-    winRate: '',
-    profitSharing: '',
-    followers: '',
-    description: '',
-    profilePicture: null
   });
-  
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submissionError, setSubmissionError] = useState<string>('');
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.username.trim()) {
+      newErrors.username = 'Username is required.';
+    }
+
+    if (!formData.tradingPairs.trim()) {
+      newErrors.tradingPairs = 'Trading pairs are required.';
+    }
+
+    if (isNaN(Number(formData.maxCopiers))) {
+      newErrors.maxCopiers = 'Max Copiers must be a number.';
+    }
+    
+    if (isNaN(Number(formData.commissionRate))) {
+      newErrors.commissionRate = 'Commission Rate must be a number.';
+    }
+
+    if (isNaN(Number(formData.minCopyAmount))) {
+      newErrors.minCopyAmount = 'Min Copy Amount must be a number.';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    
-    if (type === 'checkbox') {
-      const checked = (e.target as HTMLInputElement).checked;
-      setFormData(prev => ({
-        ...prev,
-        [name]: checked
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value
-      }));
+
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
+    }));
+
+    if (errors[name]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
     }
+    setSubmissionError('');
   };
 
-  const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setFormData(prev => ({
-        ...prev,
-        profilePicture: file
-      }));
-      
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setImagePreview(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    setSubmissionError('');
     
-    // Prepare the data for the API call
+    if (!validateForm()) {
+      return;
+    }
+
     const traderData: CreateTraderData = {
-      username: formData.username,
-      displayName: formData.displayName,
+      username: formData.username.trim(),
       status: formData.status,
       maxCopiers: Number(formData.maxCopiers) || 0,
       isVerified: formData.isVerified,
@@ -120,22 +111,19 @@ const AddTraderForm: React.FC<AddTraderFormProps> = ({ onClose, onTraderAdded, i
       minCopyAmount: Number(formData.minCopyAmount) || 0,
       maxCopyAmount: formData.maxCopyAmount ? Number(formData.maxCopyAmount) : undefined,
       tradingPairs: formData.tradingPairs.split(',').map(pair => pair.trim()).filter(Boolean),
-      strategy: formData.strategy,
-      atrRoll: formData.atrRoll,
-      winRate: formData.winRate,
-      profitSharing: formData.profitSharing,
-      followers: formData.followers,
-      description: formData.description,
-      profilePicture: formData.profilePicture
     };
-    
-    onTraderAdded(traderData);
+
+    try {
+      await onTraderAdded(traderData);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "An unexpected error occurred.";
+      setSubmissionError(message);
+    }
   };
 
   const handleCancel = () => {
     setFormData({
       username: '',
-      displayName: '',
       status: 'ACTIVE',
       maxCopiers: '',
       isVerified: false,
@@ -144,15 +132,10 @@ const AddTraderForm: React.FC<AddTraderFormProps> = ({ onClose, onTraderAdded, i
       minCopyAmount: '',
       maxCopyAmount: '',
       tradingPairs: '',
-      strategy: 'Short-Term Scalping',
-      atrRoll: '',
-      winRate: '',
-      profitSharing: '',
-      followers: '',
-      description: '',
-      profilePicture: null
     });
-    setImagePreview(null);
+    setErrors({});
+    setSubmissionError('');
+    onClose();
   };
 
   return (
@@ -163,38 +146,13 @@ const AddTraderForm: React.FC<AddTraderFormProps> = ({ onClose, onTraderAdded, i
           Add a new trader to the platform. Fill in the required details below.
         </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Display Photo Upload */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Display Photo
-            </label>
-            <div className="relative inline-block">
-              <div className="w-20 h-20 rounded-full border-2 border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50">
-                {imagePreview ? (
-                  <Image
-                    src={imagePreview} 
-                    alt="Preview" 
-                    className="w-full h-full object-cover"
-                    width={80}
-                    height={80}
-                  />
-                ) : (
-                  <Camera className="w-8 h-8 text-gray-400" />
-                )}
-              </div>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="absolute inset-0 w-20 h-20 opacity-0 cursor-pointer rounded-full"
-              />
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold cursor-pointer">
-                +
-              </div>
-            </div>
+        {submissionError && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <span className="block sm:inline">{submissionError}</span>
           </div>
+        )}
 
+        <form onSubmit={handleSubmit} className="space-y-4 text-black">
           {/* Username (Required) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -205,25 +163,15 @@ const AddTraderForm: React.FC<AddTraderFormProps> = ({ onClose, onTraderAdded, i
               name="username"
               value={formData.username}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                errors.username ? 'border-red-500' : 'border-gray-300'
+              }`}
               required
               disabled={isLoading}
             />
-          </div>
-
-          {/* Display Name */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Display Name
-            </label>
-            <input
-              type="text"
-              name="displayName"
-              value={formData.displayName}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={isLoading}
-            />
+            {errors.username && (
+              <p className="mt-1 text-sm text-red-500">{errors.username}</p>
+            )}
           </div>
 
           {/* Status */}
@@ -253,10 +201,15 @@ const AddTraderForm: React.FC<AddTraderFormProps> = ({ onClose, onTraderAdded, i
               name="maxCopiers"
               value={formData.maxCopiers}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                errors.maxCopiers ? 'border-red-500' : 'border-gray-300'
+              }`}
               min="0"
               disabled={isLoading}
             />
+            {errors.maxCopiers && (
+              <p className="mt-1 text-sm text-red-500">{errors.maxCopiers}</p>
+            )}
           </div>
 
           {/* Commission Rate */}
@@ -272,9 +225,14 @@ const AddTraderForm: React.FC<AddTraderFormProps> = ({ onClose, onTraderAdded, i
               step="0.01"
               min="0"
               max="100"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                errors.commissionRate ? 'border-red-500' : 'border-gray-300'
+              }`}
               disabled={isLoading}
             />
+            {errors.commissionRate && (
+              <p className="mt-1 text-sm text-red-500">{errors.commissionRate}</p>
+            )}
           </div>
 
           {/* Min Copy Amount */}
@@ -289,9 +247,14 @@ const AddTraderForm: React.FC<AddTraderFormProps> = ({ onClose, onTraderAdded, i
               onChange={handleInputChange}
               step="0.01"
               min="0"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                errors.minCopyAmount ? 'border-red-500' : 'border-gray-300'
+              }`}
               disabled={isLoading}
             />
+            {errors.minCopyAmount && (
+              <p className="mt-1 text-sm text-red-500">{errors.minCopyAmount}</p>
+            )}
           </div>
 
           {/* Max Copy Amount */}
@@ -322,159 +285,69 @@ const AddTraderForm: React.FC<AddTraderFormProps> = ({ onClose, onTraderAdded, i
               value={formData.tradingPairs}
               onChange={handleInputChange}
               placeholder="BTC/USD, ETH/USD, etc."
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                errors.tradingPairs ? 'border-red-500' : 'border-gray-300'
+              }`}
               required
               disabled={isLoading}
             />
+            {errors.tradingPairs && (
+              <p className="mt-1 text-sm text-red-500">{errors.tradingPairs}</p>
+            )}
           </div>
 
-          {/* Is Verified */}
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              name="isVerified"
-              checked={formData.isVerified}
-              onChange={handleInputChange}
-              className="mr-2"
-              disabled={isLoading}
-            />
-            <label className="text-sm font-medium text-gray-700">
-              Verified Trader
-            </label>
-          </div>
-
-          {/* Is Public */}
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              name="isPublic"
-              checked={formData.isPublic}
-              onChange={handleInputChange}
-              className="mr-2"
-              disabled={isLoading}
-            />
-            <label className="text-sm font-medium text-gray-700">
-              Public Profile
-            </label>
-          </div>
-
-          {/* Strategy */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Strategy
-            </label>
-            <select
-              name="strategy"
-              value={formData.strategy}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={isLoading}
-            >
-              <option value="Short-Term Scalping">Short-Term Scalping</option>
-              <option value="Day Trading">Day Trading</option>
-              <option value="Swing Trading">Swing Trading</option>
-              <option value="Position Trading">Position Trading</option>
-            </select>
-          </div>
-
-          {/* ATR Roll */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              ATR Roll
-            </label>
-            <input
-              type="text"
-              name="atrRoll"
-              value={formData.atrRoll}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={isLoading}
-            />
-          </div>
-
-          {/* Win Rate */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Win Rate (%)
-            </label>
-            <input
-              type="text"
-              name="winRate"
-              value={formData.winRate}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={isLoading}
-            />
-          </div>
-
-          {/* Profit Sharing */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Profit Sharing (%)
-            </label>
-            <input
-              type="text"
-              name="profitSharing"
-              value={formData.profitSharing}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={isLoading}
-            />
-          </div>
-
-          {/* Followers */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Followers
-            </label>
-            <input
-              type="text"
-              name="followers"
-              value={formData.followers}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={isLoading}
-            />
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description
-            </label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleInputChange}
-              rows={3}
-              maxLength={300}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-              disabled={isLoading}
-            />
-            <div className="text-right text-xs text-gray-400 mt-1">
-              {formData.description.length}/300
+          {/* Is Verified & Is Public Checkboxes */}
+          <div className="flex space-x-4">
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                name="isVerified"
+                checked={formData.isVerified}
+                onChange={handleInputChange}
+                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                disabled={isLoading}
+              />
+              <label className="ml-2 block text-sm text-gray-700">Is Verified</label>
+            </div>
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                name="isPublic"
+                checked={formData.isPublic}
+                onChange={handleInputChange}
+                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                disabled={isLoading}
+              />
+              <label className="ml-2 block text-sm text-gray-700">Is Public</label>
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex space-x-3 pt-4">
+          <div className="flex justify-end space-x-4 mt-6">
             <button
               type="button"
-              onClick={() => {
-                handleCancel();
-                onClose();
-              }}
-              className="flex-1 py-2 px-4 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors disabled:opacity-50"
+              onClick={handleCancel}
+              className="px-4 py-2 text-sm font-medium rounded-md text-gray-700 bg-gray-200 hover:bg-gray-300 transition"
               disabled={isLoading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors disabled:bg-blue-400 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition flex items-center justify-center"
               disabled={isLoading}
             >
-              {isLoading ? 'Adding...' : 'Add'}
+              {isLoading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Adding...
+                </>
+              ) : (
+                "Add Trader"
+              )}
             </button>
           </div>
         </form>

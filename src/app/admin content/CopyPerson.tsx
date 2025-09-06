@@ -9,180 +9,192 @@ import { getAuthToken } from "../utils/auth";
 import EditTraderModal from "./modal/EditTraderModal";
 
 interface ChartData {
-  minValue: number;
-  maxValue: number;
-  dataPoints: number[];
+  minValue: number;
+  maxValue: number;
+  dataPoints: number[];
 }
 
 interface Trade {
-  id: string;
-  status: string;
+  id: string;
+  status: string;
 }
 
 interface TraderFollower {
-  id: string;
+  id: string;
 }
 
 interface TraderPerformance {
-  id: string;
+  id: string;
 }
 
 interface TraderTrade {
-  id: string;
+  id: string;
 }
 
 interface TraderSocialMetrics {
-  id: string;
+  id: string;
 }
 
 interface UserFavoriteTrader {
-  id: string;
+  id: string;
 }
 
 interface Trader {
-  id: string;
-  username: string;
-  profilePicture?: string;
-  status: "ACTIVE" | "PAUSED";
-  maxCopiers: number;
-  currentCopiers: number;
-  totalCopiers: number;
-  totalPnL: number;
-  copiersPnL: number;
-  aum: number;
-  riskScore: number;
-  badges?: string[];
-  isPublic: boolean;
-  commissionRate: number;
-  minCopyAmount: number;
-  maxCopyAmount?: number;
-  tradingPairs: string[];
-  followers: TraderFollower[];
-  performances: TraderPerformance[];
-  trades: TraderTrade[];
-  socialMetrics?: TraderSocialMetrics;
-  favoritedBy: UserFavoriteTrader[];
-  actualTrades: Trade[];
-  createdAt: Date;
-  updatedAt: Date;
+  id: string;
+  username: string;
+  profilePicture?: string;
+  status: "ACTIVE" | "PAUSED";
+  maxCopiers: number;
+  currentCopiers: number;
+  totalCopiers: number;
+  totalPnL: number;
+  copiersPnL: number;
+  aum: number;
+  riskScore: number;
+  badges?: string[];
+  isPublic: boolean;
+  commissionRate: number;
+  minCopyAmount: number;
+  maxCopyAmount?: number;
+  tradingPairs: string[];
+  followers: TraderFollower[];
+  performances: TraderPerformance[];
+  trades: TraderTrade[];
+  socialMetrics?: TraderSocialMetrics;
+  favoritedBy: UserFavoriteTrader[];
+  actualTrades: Trade[];
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const generateChartData = (id: string, currentValue: number): ChartData => {
-  const minValue: number = 0.1;
-  const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const maxValue: number = 50 + (hash % 50);
-  const dataPoints: number[] = Array.from({ length: 10 }, (_, i) => {
-    const progress = i / 9;
-    const variation = ((hash + i) % 10) * 0.02;
-    return minValue + (currentValue - minValue) * progress * (0.9 + variation);
-  });
+  const minValue: number = 0.1;
+  const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const maxValue: number = 50 + (hash % 50);
+  const dataPoints: number[] = Array.from({ length: 10 }, (_, i) => {
+    const progress = i / 9;
+    const variation = ((hash + i) % 10) * 0.02;
+    return minValue + (currentValue - minValue) * progress * (0.9 + variation);
+  });
 
-  return { minValue, maxValue, dataPoints };
+  return { minValue, maxValue, dataPoints };
 };
 
 const CopyPerson = () => {
-  const [traders, setTraders] = useState<Trader[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [editingTrader, setEditingTrader] = useState<Trader | null>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const [traders, setTraders] = useState<Trader[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [editingTrader, setEditingTrader] = useState<Trader | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    const fetchTraders = async () => {
-      const token = getAuthToken();
-      setIsLoading(true);
-      setError(null);
+  useEffect(() => {
+    const fetchTraders = async () => {
+      const token = getAuthToken();
+      setIsLoading(true);
+      setError(null);
 
-      try {
-        const response = await fetch(API_ENDPOINT.TRADERS.GET_ALL_TRADERS, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
+      try {
+        const response = await fetch(API_ENDPOINT.TRADERS.GET_ALL_TRADERS, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch traders: ${response.status}`);
-        }
+        if (!response.ok) {
+          throw new Error(`Failed to fetch traders: ${response.status}`);
+        }
 
-        const result = await response.json();
-        if (result.data && Array.isArray(result.data.traders)) {
-          const mappedTraders = result.data.traders.map((trader: Trader) => ({
-            ...trader,
-            actualTrades: trader.actualTrades || [],
-            followers: trader.followers || [],
-            favoritedBy: trader.favoritedBy || [],
-            createdAt: new Date(trader.createdAt),
-            updatedAt: new Date(trader.updatedAt),
-          }));
-          setTraders(mappedTraders);
-        } else {
-          throw new Error("Invalid data format received from API");
-        }
-      } catch (err) {
-        console.error("Failed to fetch traders", err);
-        setError(err instanceof Error ? err.message : "An unknown error occurred.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchTraders();
-  }, []);
+        const result = await response.json();
+        if (result.data && Array.isArray(result.data.traders)) {
+          const mappedTraders = result.data.traders.map((trader: Trader) => ({
+            ...trader,
+            actualTrades: trader.actualTrades || [],
+            followers: trader.followers || [],
+            favoritedBy: trader.favoritedBy || [],
+            createdAt: new Date(trader.createdAt),
+            updatedAt: new Date(trader.updatedAt),
+          }));
+          setTraders(mappedTraders);
+        } else {
+          throw new Error("Invalid data format received from API");
+        }
+      } catch (err) {
+        console.error("Failed to fetch traders", err);
+        setError(err instanceof Error ? err.message : "An unknown error occurred.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchTraders();
+  }, []);
 
-  const handleEdit = (trader: Trader) => {
-    setEditingTrader(trader);
-    setIsEditModalOpen(true);
-  };
+  const handleEdit = (trader: Trader) => {
+    setEditingTrader(trader);
+    setIsEditModalOpen(true);
+  };
 
-  const handleSaveEdit = async (updatedTrader: Trader) => {
-    const token = getAuthToken();
-    setIsSaving(true);
-    
-    try {
-      const response = await fetch(API_ENDPOINT.TRADERS.EDIT_TRADERS.replace("{traderId}", updatedTrader.id), {
-        method: 'PATCH',
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(updatedTrader)
-      });
+  const handleSaveEdit = async (updatedTrader: Trader) => {
+    const token = getAuthToken();
+    setIsSaving(true);
+    
+    try {
+      const payload = {
+        profilePicture: updatedTrader.profilePicture,
+        status: updatedTrader.status,
+        maxCopiers: updatedTrader.maxCopiers,
+        isPublic: updatedTrader.isPublic,
+        commissionRate: updatedTrader.commissionRate,
+        minCopyAmount: updatedTrader.minCopyAmount,
+        maxCopyAmount: updatedTrader.maxCopyAmount,
+        tradingPairs: updatedTrader.tradingPairs,
+        badges: updatedTrader.badges,
+      };
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Failed to edit trader: ${response.statusText}`);
-      }
-      
-      const result = await response.json();
-      
-      if (result.data) {
-        setTraders(prevTraders => prevTraders.map(trader => 
-          trader.id === result.data.id ? result.data : trader
-        ));
-        setIsEditModalOpen(false);
-      } else {
-        throw new Error('Invalid response format from server');
-      }
-    } catch (err) {
-      console.error('Failed to edit trader', err);
-      setError(err instanceof Error ? err.message : "An unknown error occurred.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
+      const response = await fetch(API_ENDPOINT.TRADERS.EDIT_TRADERS.replace("{traderId}", updatedTrader.id), {
+        method: 'PATCH',
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload)
+      });
 
-  if (isLoading) {
-    return <div className="text-white text-center py-8">Loading traders...</div>;
-  }
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to edit trader: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      console.log("api response:", result)
+      if (result.data) {
+        setTraders(prevTraders => prevTraders.map(trader => 
+          trader.id === result.data.id ? result.data : trader
+        ));
+        setIsEditModalOpen(false);
+      } else {
+        throw new Error('Invalid response format from server');
+      }
+    } catch (err) {
+      console.error('Failed to edit trader', err);
+      setError(err instanceof Error ? err.message : "An unknown error occurred.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
-  if (error) {
-    return <div className="text-red-500 text-center py-8">Error: {error}</div>;
-  }
+  if (isLoading) {
+    return <div className="text-white text-center py-8">Loading traders...</div>;
+  }
 
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-13">
+  if (error) {
+    return <div className="text-red-500 text-center py-8">Error: {error}</div>;
+  }
+
+  return (
+     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-13">
       <h2 className="text-xl mb-6 font-semibold text-white">Manage Copy Traders</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {traders.length > 0 ? (
@@ -363,7 +375,7 @@ const CopyPerson = () => {
         isLoading={isSaving}
       />
     </div>
-  );
+  );
 };
 
 export default CopyPerson;
