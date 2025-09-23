@@ -43,6 +43,7 @@ export const API_ENDPOINT={
         ADD_TRADERS:`${API_BASE_URL}/trade/create-trader`,
         DELETE_TRADERS:`${API_BASE_URL}/trade/trader/{traderId}`,
         EDIT_TRADERS: `${API_BASE_URL}/trade/trader/{traderId}`,
-        SYNC_FOLLOWERS:`${API_BASE_URL}/trade/admin/sync-trader-followers`
+        SYNC_FOLLOWERS:`${API_BASE_URL}/trade/admin/sync-trader-followers`,
+        TRADER_TRADER:`${API_BASE_URL}/trade/admin/trader-trade`
     }
 }
