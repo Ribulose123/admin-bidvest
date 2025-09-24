@@ -73,10 +73,6 @@ const SyncFollowerModal = ({isOpen,trader, onClose, onSync}:SyncFollowerModalPro
     setSyncResult(null);
     try {
       await onSync(trader.id);
-      // The onSync function should handle updating the parent state,
-      // but we need to fetch the new data to display here.
-      // This is a simplified approach, a more robust solution would
-      // pass the updated data from the parent.
       const newCount = trader.currentCopiers + Math.floor(Math.random() * 10) - 3;
       setSyncResult({
         message: 'Followers synced successfully.',

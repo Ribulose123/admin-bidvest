@@ -61,11 +61,9 @@ const Reduction: React.FC<ReductionProps> = ({ userId }) => {
             ? transactionData.filter((t: Transaction) => t.userId === userId)
             : transactionData;
           
-          console.log('Filtered transactions:', userTransactions); 
           
           // Calculate summary
           const calculatedSummary = calculateTransactionSummary(userTransactions)
-          console.log('Calculated summary:', calculatedSummary); 
           
           setSummary(calculatedSummary)
         } else {
@@ -92,8 +90,6 @@ const Reduction: React.FC<ReductionProps> = ({ userId }) => {
     let lastWithdrawalTime: string | null = null;
 
     const depositTypes = ['DEPOSIT', 'SIGNALS', 'STAKING', 'SUBSCRIPTION'];
-
-    // Sort transactions by date to find the last ones (newest first)
     const sortedTransactions = [...transactions].sort((a, b) => 
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
@@ -101,7 +97,6 @@ const Reduction: React.FC<ReductionProps> = ({ userId }) => {
 
     // Calculate totals and find last transactions
     for (const transaction of sortedTransactions) {
-      console.log('Processing transaction:', transaction); 
       
       if (depositTypes.includes(transaction.type)) {
         totalDeposits += transaction.amount;

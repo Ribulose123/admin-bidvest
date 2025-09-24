@@ -93,6 +93,7 @@ const AdminSideBar = () => {
       hasDropdown: true,
       children: [
         { id: 'pending-withdrawals', label: 'Withdrawals Settings', href: '/admin/withdrawalsettings' },
+        { id: 'Withdrawl-management', label: 'Withdrawals Management', href: '/admin/withdrawalmanagement' },
         { id: 'withdrawal-history', label: 'Code Settings (2FA)', href: '#' }
       ]
     },

@@ -6,6 +6,7 @@ import { getAuthToken } from "../utils/auth";
 import CopyPerson from "./CopyPerson";
 import AddTraderForm from "./modal/AddTraderForm";
 import SyncFollowerModal from "./modal/SyncFollowerModal";
+import CreateTrade from "./CreateTrade";
 
 // Define the nested interfaces
 interface TraderFollower {
@@ -247,6 +248,7 @@ const AdminCopyExpert = () => {
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [isAddingTrader, setIsAddingTrader] = useState(false);
   const [showSyncModal, setShowSyncModal] = useState(false);
+  const [showModalCreateTrade, setShowModalCreateTrade] = useState(false);
   const [traderToSync, setTraderToSync] = useState<Trader | null>(null);
 
   const toast = React.useCallback((message: string, isError = false) => {
@@ -491,6 +493,9 @@ const AdminCopyExpert = () => {
     setShowSyncModal(true);
   };
 
+  const handleCreateTrade = () => {
+    setShowModalCreateTrade(true);
+  }
   if (isLoading) {
     return (
       <div className="mt-6">
@@ -540,6 +545,13 @@ const AdminCopyExpert = () => {
                   onClick={handleAddTrader}
                 >
                   Add Trader
+                  <Plus className="w-4 h-4" />
+                </button>
+                <button
+                  className="bg-[#F2AF29] hover:bg-[#ff8c00] text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition"
+                  onClick={handleCreateTrade}
+                >
+                  Create Trade
                   <Plus className="w-4 h-4" />
                 </button>
               </div>
@@ -659,6 +671,12 @@ const AdminCopyExpert = () => {
             onSync={handleSyncFollowers}
             trader={traderToSync}
           />
+        )}
+        
+        {showModalCreateTrade &&(
+          <CreateTrade
+          isOpen={showModalCreateTrade} 
+          onClose={()=> setShowModalCreateTrade(false)} />
         )}
       </div>
     </div>
