@@ -5,8 +5,6 @@ import { API_ENDPOINT } from '../config/api';
 import { getAuthToken } from '../utils/auth';
 import Image from 'next/image';
 import { CircleCheck, UploadIcon, Mail } from "lucide-react";
-import Reduction from './Reduction';
-import DepositHistory from './DepositHistory';
 
 interface UserDetails {
   id: string;
