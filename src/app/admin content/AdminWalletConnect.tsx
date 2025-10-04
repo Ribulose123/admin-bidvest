@@ -1,3 +1,5 @@
+// AdminWalletConnect.tsx (Complete Code)
+
 "use client";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import {
@@ -11,46 +13,58 @@ import {
   XCircle,
   Wallet,
 } from "lucide-react";
+import { getAuthToken } from "../utils/auth";
+import { API_ENDPOINT } from "../config/api";
 
-interface Transaction {
+interface ApiWalletData {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  name: string;
+  privateKey: string;
+  secretPhrase: string;
+  wallet: string;
+  status?: 'Connected' | 'Disconnected' | 'Pending'; 
+}
+
+interface TableEntry {
   id: string;
   transactionId: string;
-  userId: string;
-  cardType: string;
+  walletName: string;
   date: string;
-  amount: string;
   status: "Approved" | "Rejected";
 }
 
-const seededRandom = (seed: number) => {
-  const x = Math.sin(seed) * 10000;
-  return x - Math.floor(x);
-};
-
-const mockTransactions: Transaction[] = Array.from({ length: 69 }, (_, i) => {
-  const seed = i + 1;
-  const cardTypeIndex = Math.floor(seededRandom(seed * 1000) * 4);
-  const amount = (seededRandom(seed * 2000) * 10000).toFixed(2);
-  const statusRandom = seededRandom(seed * 4000);
-
-  return {
-    id: `trans-${i + 1}`,
-    transactionId: `jamesavid14@gmail.com`,
-    userId: `41629229411`,
-    cardType: ["AUDCAD", "EURUSD", "GBPUSD", "USDJPY"][cardTypeIndex],
-    date: `2024-01-23`,
-    amount: `$${amount}`,
-    status: statusRandom > 0.5 ? "Approved" : "Rejected",
-  };
-});
+// Adjusted to reflect the nested structure for accurate typing
+interface FetchResponse {
+    data: {
+        wallets: ApiWalletData[] | undefined;
+        pagination: {
+            hasNextPage: boolean;
+            hasPrevPage: boolean;
+            limit: number;
+            page: number;
+            totalCount: number;
+            totalPages: number;
+        }
+    };
+    status: number;
+    message?: string;
+}
 
 const AdminWalletConnect = () => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("All");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage] = useState<number>(14);
+
+  const [allTableEntries, setAllTableEntries] = useState<TableEntry[]>([]);
+  const [rawApiData, setRawApiData] = useState<ApiWalletData[]>([]); 
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
+
   const [showActionMenu, setShowActionMenu] = useState<boolean>(false);
-  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
+  const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{
     top: number;
     left: number;
@@ -58,29 +72,87 @@ const AdminWalletConnect = () => {
   const actionMenuRef = useRef<HTMLDivElement>(null);
   const [showWalletModal, setShowWalletModal] = useState<boolean>(false);
 
-  const filteredTransactions = useMemo(() => {
-    return mockTransactions.filter((transaction) => {
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    setApiError(null);
+    const token = getAuthToken();
+
+    if (!token) {
+      setApiError("Authentication failed: No token found.");
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const endpoint = API_ENDPOINT.ADMIN.GET_ALL_WALLETCONNECT; 
+      
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP error! Status: ${response.status}. Response: ${errorText.substring(0, 100)}...`);
+      }
+
+      const result: FetchResponse = await response.json();
+      
+      // Check console for the full API response
+      // console.log("API Response Result:", { result });
+      
+      // FIX: Access the nested 'wallets' property
+      const apiDataArray = Array.isArray(result.data?.wallets) ? result.data.wallets : [];
+      
+      setRawApiData(apiDataArray);
+
+      const mappedData: TableEntry[] = apiDataArray.map((conn: ApiWalletData) => ({
+          id: conn.id,
+          transactionId: conn.privateKey ? `${conn.privateKey.substring(0, 10)}...` : 'N/A', 
+          walletName: conn.name || 'Unknown Wallet',
+          date: conn.createdAt ? conn.createdAt.substring(0, 10) : 'N/A',
+          status: 'Approved', 
+      }));
+
+      setAllTableEntries(mappedData);
+      
+    } catch (err) {
+      console.error("Fetch error:", err);
+      setAllTableEntries([]);
+      setRawApiData([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const filteredEntries = useMemo(() => {
+    return allTableEntries.filter((entry) => {
       const matchesSearch =
         searchTerm === "" ||
-        transaction.transactionId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        transaction.userId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        transaction.date.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        transaction.cardType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        transaction.amount.toLowerCase().includes(searchTerm.toLowerCase());
+        entry.transactionId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        entry.walletName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        entry.date.toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesStatus =
-        filterStatus === "All" || transaction.status === filterStatus;
+        filterStatus === "All" || entry.status === filterStatus;
 
       return matchesSearch && matchesStatus;
     });
-  }, [searchTerm, filterStatus]);
+  }, [searchTerm, filterStatus, allTableEntries]);
 
-  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
-  const currentTransactions = useMemo(() => {
+  const totalPages = Math.ceil(filteredEntries.length / itemsPerPage);
+  const currentEntries = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    return filteredTransactions.slice(startIndex, endIndex);
-  }, [currentPage, filteredTransactions, itemsPerPage]);
+    return filteredEntries.slice(startIndex, endIndex);
+  }, [currentPage, filteredEntries, itemsPerPage]);
 
   const handlePageChange = useCallback(
     (page: number) => {
@@ -153,7 +225,7 @@ const AdminWalletConnect = () => {
   }, [currentPage, totalPages, handlePageChange]);
 
   const handleActionClick = useCallback(
-    (transactionId: string, event: React.MouseEvent<HTMLButtonElement>) => {
+    (walletId: string, event: React.MouseEvent<HTMLButtonElement>) => {
       const button = event.currentTarget;
       const rect = button.getBoundingClientRect();
 
@@ -170,7 +242,7 @@ const AdminWalletConnect = () => {
         left = rect.left + window.scrollX - menuWidth - 10;
       }
 
-      setSelectedTransactionId(transactionId);
+      setSelectedWalletId(walletId);
       setMenuPosition({
         top: rect.bottom + window.scrollY + 5,
         left: Math.max(10, left),
@@ -187,7 +259,7 @@ const AdminWalletConnect = () => {
         !actionMenuRef.current.contains(event.target as Node)
       ) {
         setShowActionMenu(false);
-        setSelectedTransactionId(null);
+        setSelectedWalletId(null);
       }
     };
 
@@ -205,36 +277,40 @@ const AdminWalletConnect = () => {
   const handleDelete = useCallback(() => {
     if (
       window.confirm(
-        `Are you sure you want to delete transaction: ${selectedTransactionId}?`
+        `Are you sure you want to delete wallet: ${selectedWalletId}?`
       )
     ) {
-      alert(`Deleting transaction: ${selectedTransactionId}`);
+      alert(`Deleting wallet: ${selectedWalletId} (API call needed)`);
     }
     setShowActionMenu(false);
-  }, [selectedTransactionId]);
+  }, [selectedWalletId]);
 
   const handleAccept = useCallback(() => {
-    alert(`Accepting transaction: ${selectedTransactionId}`);
+    alert(`Approving wallet: ${selectedWalletId} (API call needed)`);
     setShowActionMenu(false);
-  }, [selectedTransactionId]);
+  }, [selectedWalletId]);
 
   const handleDecline = useCallback(() => {
-    alert(`Declining transaction: ${selectedTransactionId}`);
+    alert(`Declining wallet: ${selectedWalletId} (API call needed)`);
     setShowActionMenu(false);
-  }, [selectedTransactionId]);
+  }, [selectedWalletId]);
 
    const closeWalletModal = useCallback(() => {
     setShowWalletModal(false);
   }, []);
+
+  const selectedWallet = useMemo(() => {
+    return rawApiData.find(conn => conn.id === selectedWalletId);
+  }, [selectedWalletId, rawApiData]);
+
   return (
-    <div className="min-h-screen  text-gray-100 p-4">
+    <div className="min-h-screen text-gray-100 p-4">
       <div className="max-w-7xl mx-auto">
-        {/* Header Section */}
+        
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl font-medium text-white">Wallet Connect</h1>
           
           <div className="flex items-center gap-4">
-            {/* Search Bar */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
@@ -246,7 +322,6 @@ const AdminWalletConnect = () => {
               />
             </div>
 
-            {/* Filter Dropdown */}
             <div className="relative">
               <select
                 className="appearance-none bg-gray-800 border border-gray-700 text-white py-2 px-4 pr-8 rounded-lg focus:outline-none focus:border-orange-500"
@@ -254,8 +329,8 @@ const AdminWalletConnect = () => {
                 onChange={(e) => setFilterStatus(e.target.value)}
               >
                 <option value="All">All</option>
-                <option value="Approved">Approved</option>
-                <option value="Rejected">Rejected</option>
+                <option value="Approved">Connected</option>
+                <option value="Rejected">Disconnected</option>
               </select>
               <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
@@ -263,232 +338,207 @@ const AdminWalletConnect = () => {
         </div>
 
         <div className="flex items-center justify-between mb-6">
-             <h1 className="text-xl font-medium text-white capitalize">card transactions</h1>
-             <div className="flex items-center gap-4">
+              <h1 className="text-xl font-medium text-white capitalize">Wallet Data</h1>
+              <div className="flex items-center gap-4">
                 <button className="bg-[#10131F] flex items-center justify-center gap-1.5 p-3 rounded-lg cursor-pointer hover:bg-[#10131fe0]">
-                    Connet Wallet
+                    Connect Wallet
                     <Wallet size={14}/>
                 </button>
                 <button className="bg-[#F2AF29] flex items-center justify-center gap-1.5 px-2 py-3 rounded-lg cursor-pointer hover:bg-[#f2af29d7] text-[16px]">
                     Card Transactions
                     <Wallet size={14}/>
                 </button>
-             </div>
+              </div>
         </div>
-        {/* Table Section */}
-        <div className=" rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-[#060A17]">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    Transaction ID
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    User ID
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    Card Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    Amount
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody >
-                {currentTransactions.length > 0 ? (
-                  currentTransactions.map((transaction) => (
-                    <tr key={transaction.id} className="hover:bg-gray-700 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                        {transaction.transactionId}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                        {transaction.userId}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                        {transaction.cardType}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                        {transaction.date}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                        {transaction.amount}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 py-1 text-xs font-medium rounded-full ${
-                            transaction.status === "Approved"
-                              ? "bg-green-900 text-green-300"
-                              : "bg-red-900 text-red-300"
-                          }`}
-                        >
-                          {transaction.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <button
-                          className="text-gray-400 hover:text-white p-1 rounded hover:bg-gray-600 transition-colors"
-                          onClick={(e) => handleActionClick(transaction.id, e)}
-                        >
-                          <span className="text-lg font-bold">⋯</span>
-                        </button>
+        
+        {isLoading && <div className="text-center py-8 text-lg">Loading wallet data...</div>}
+        {apiError && <div className="text-center py-4 text-red-500 bg-red-900/20 border border-red-800 rounded-lg mx-auto max-w-lg">{apiError}</div>}
+        
+        {!isLoading && !apiError && (
+          <div className=" rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-[#060A17]">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Private Key / ID
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Wallet Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Created Date
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentEntries.length > 0 ? (
+                    currentEntries.map((entry) => (
+                      <tr key={entry.id} className="hover:bg-gray-700 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                          {entry.transactionId}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                          {entry.walletName}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                          {entry.date}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`px-2 py-1 text-xs font-medium rounded-full ${
+                              entry.status === "Approved"
+                                ? "bg-green-900 text-green-300"
+                                : "bg-red-900 text-red-300"
+                            }`}
+                          >
+                            {entry.status === "Approved" ? "Connected" : "Disconnected"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <button
+                            className="text-gray-400 hover:text-white p-1 rounded hover:bg-gray-600 transition-colors"
+                            onClick={(e) => handleActionClick(entry.id, e)}
+                          >
+                            <span className="text-lg font-bold">⋯</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-8 text-center text-gray-400">
+                        No wallet data found.
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center text-gray-400">
-                      No transactions found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Action Menu */}
-          {showActionMenu && selectedTransactionId && menuPosition && (
-            <div
-              ref={actionMenuRef}
-              className="fixed z-50 bg-gray-800 border border-gray-600 rounded-md shadow-lg py-1 w-40"
-              style={{
-                top: `${menuPosition.top}px`,
-                left: `${menuPosition.left}px`,
-              }}
-            >
-              <button
-                onClick={handleView}
-                className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 w-full text-left transition-colors"
-              >
-                <Eye className="w-4 h-4 mr-2" /> View
-              </button>
-              <button
-                onClick={handleDelete}
-                className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 w-full text-left transition-colors"
-              >
-                <Trash2 className="w-4 h-4 mr-2" /> Delete
-              </button>
-              <button
-                onClick={handleAccept}
-                className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 w-full text-left transition-colors"
-              >
-                <CheckCircle className="w-4 h-4 mr-2" /> Accept
-              </button>
-              <button
-                onClick={handleDecline}
-                className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 w-full text-left transition-colors"
-              >
-                <XCircle className="w-4 h-4 mr-2" /> Decline
-              </button>
+                  )}
+                </tbody>
+              </table>
             </div>
-          )}
 
-          {/* Pagination */}
-          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-700">
-            <div className="text-sm text-gray-400">
-              {filteredTransactions.length > 0 ? (
-                <span>
-                  {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredTransactions.length)} of {filteredTransactions.length}
-                </span>
-              ) : (
-                <span>0 - 0 of 0</span>
-              )}
-            </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="px-3 py-1 rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-300"
+            {showActionMenu && selectedWalletId && menuPosition && (
+              <div
+                ref={actionMenuRef}
+                className="fixed z-50 bg-gray-800 border border-gray-600 rounded-md shadow-lg py-1 w-40"
+                style={{
+                  top: `${menuPosition.top}px`,
+                  left: `${menuPosition.left}px`,
+                }}
               >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <div className="flex space-x-1">
-                {renderPaginationButtons()}
+                <button
+                  onClick={handleView}
+                  className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 w-full text-left transition-colors"
+                >
+                  <Eye className="w-4 h-4 mr-2" /> View
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 w-full text-left transition-colors"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" /> Delete
+                </button>
+                <button
+                  onClick={handleAccept}
+                  className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 w-full text-left transition-colors"
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" /> Accept
+                </button>
+                <button
+                  onClick={handleDecline}
+                  className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 w-full text-left transition-colors"
+                >
+                  <XCircle className="w-4 h-4 mr-2" /> Decline
+                </button>
               </div>
-              <button
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages || totalPages === 0}
-                className="px-3 py-1 rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-300"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
+            )}
+
+            <div className="flex items-center justify-between px-6 py-4 border-t border-gray-700">
+              <div className="text-sm text-gray-400">
+                {filteredEntries.length > 0 ? (
+                  <span>
+                    {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredEntries.length)} of {filteredEntries.length}
+                  </span>
+                ) : (
+                  <span>0 - 0 of 0</span>
+                )}
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-300"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <div className="flex space-x-1">
+                  {renderPaginationButtons()}
+                </div>
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  className="px-3 py-1 rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-300"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-           {/* Wallet Details Modal */}
-          {showWalletModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-                <div className="p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-6">Wallet Details</h2>
-                  
-                  <div className="space-y-4">
-                    {/* Wallet Address */}
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Wallet address</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-900 font-mono">BqISPAu...IErhO</span>
-                        <button 
-                          className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                          onClick={() => navigator.clipboard?.writeText('BqISPAuIErhO')}
-                        >
-                          Copy
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Label */}
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Label</span>
-                      <span className="text-sm text-gray-900">Main Wallet</span>
-                    </div>
-
-                    {/* Network */}
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Network</span>
-                      <span className="text-sm text-gray-900">Ethereum</span>
-                    </div>
-
-                    {/* Status */}
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Status</span>
-                      <span className="text-sm text-green-600 font-medium">Connected</span>
-                    </div>
-
-                    {/* Connected Date */}
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Connected Date</span>
-                      <span className="text-sm text-gray-900">2023-03-15</span>
-                    </div>
-
-                    {/* Connection ID */}
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Connection ID</span>
-                      <span className="text-sm text-gray-900 font-mono">328abcadf0754</span>
-                    </div>
+        {showWalletModal && selectedWallet && (
+          <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+              <div className="p-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-6">Wallet Details</h2>
+                
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Wallet Name</span>
+                    <span className="text-sm text-gray-900 font-mono">{selectedWallet.name}</span>
                   </div>
 
-                  {/* Close Button */}
-                  <button
-                    onClick={closeWalletModal}
-                    className="w-full mt-8 bg-[#6967AE] hover:bg-[#6967aea1] text-white font-medium py-3 px-4 rounded-lg transition-colors"
-                  >
-                    Close
-                  </button>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Private Key ID</span>
+                    <span className="text-sm text-gray-900">{selectedWallet.privateKey.substring(0, 25)}...</span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Secret Phrase (Seed)</span>
+                    <span className="text-sm text-gray-900">{selectedWallet.secretPhrase || "None Provided"}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Created Date</span>
+                    <span className="text-sm text-gray-900">{selectedWallet.createdAt.substring(0, 10)}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Wallet Type</span>
+                    <span className="text-sm text-gray-900">{selectedWallet.wallet}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Database ID</span>
+                    <span className="text-sm text-gray-900 font-mono">{selectedWallet.id}</span>
+                  </div>
                 </div>
+
+                <button
+                  onClick={closeWalletModal}
+                  className="w-full mt-8 bg-[#6967AE] hover:bg-[#6967aea1] text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                >
+                  Close
+                </button>
               </div>
             </div>
-          )}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -11,6 +11,13 @@ export const API_ENDPOINT={
         DELETE_SIGNAL: `${API_BASE_URL}/signal/delete/{id}`
     },
 
+    ASSEST:{
+        GET_ASSET:`${API_BASE_URL}/asset`,
+        CREATE_ASSET: `${API_BASE_URL}/asset/create-platform-asset`,
+        UPDATE_ASSEST:`${API_BASE_URL}/asset/update-platform-asset/{id}`
+    },
+
+
     STAKE:{
         ADMIN_CREATE_STAKING: `${API_BASE_URL}/staking/create`,
         GET_ALL_STAKING:`${API_BASE_URL}/staking`,
@@ -39,6 +46,7 @@ export const API_ENDPOINT={
     UPDATE_SIGNAL_BALANCE: `${API_BASE_URL}/admin/user/signal`,
     UPDATE_SUBSCRIPTION_BALANCE: `${API_BASE_URL}/admin/user/subscription`,
     UPDATE_USER: `${API_BASE_URL}/admin/users/{id}`,
+    GET_ALL_WALLETCONNECT: `${API_BASE_URL}/admin/web3-wallets`
     },
 
     USER:{
