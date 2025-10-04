@@ -1,98 +1,281 @@
 "use client";
-import {
-  CircleCheck,
-  UploadIcon,
-  Mail,
-  MapPin,
-  Phone,
-  ChevronDown,
-} from "lucide-react";
+import { CircleCheck, UploadIcon, Mail, ChevronDown } from "lucide-react";
 import Image from "next/image";
 import { useParams } from "next/navigation";
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { API_ENDPOINT } from "../config/api";
+import { UpdateBalanceModal } from "./modal/UpdateBalanceModal";
+import { UpdateUserModal } from "./modal/UpdateUserModal";
 
-interface TradeData {
+// Interfaces based on your exact API response
+interface StakingData {
+  id: string;
+  userId: string;
+  totalBalance: number;
+  activeBalance: number;
+  status: "active" | "inactive";
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface SignalData {
   id: string;
   pair: string;
-  type: "Long" | "Short";
-  amount: number;
-  status: "Closed" | "Open";
-  outcome: number;
+  direction: "buy" | "sell";
+  strength: number;
   timestamp: string;
+  stakings?: number;
 }
+
+interface CopyStats {
+  totalFollowers: number;
+  totalProfit: number;
+  winRate: number;
+  activeTrades: number;
+}
+
+interface CopyTradingStats {
+  totalCopiers: number;
+  totalVolume: number;
+  monthlyProfit: number;
+  performanceScore: number;
+}
+
+interface Conversion {
+  rate: number;
+  fromAsset: string;
+  toAsset: string;
+}
+
+interface Subscription {
+  id: string;
+  plan: string;
+  status: "active" | "inactive";
+}
+
+interface PlatformAsset {
+  id: string;
+  name: string;
+  symbol: string;
+  network: string;
+  createdAt: string;
+  updatedAt: string;
+  depositAddress: string;
+}
+
+interface Transaction {
+  id: string;
+  userId: string;
+  amount: number;
+  type: string;
+  status: string;
+  createdAt: string;
+  platformAsset: PlatformAsset;
+  conversion: Conversion | null;
+  signal: SignalData | null;
+  staking: StakingData | null;
+  subscription: Subscription | null;
+  withdrawal: Transaction | null;
+}
+
+interface UserAsset {
+  id: string;
+  userId: string;
+  platformAssetId: string;
+  balance: number;
+  createdAt: string;
+  updatedAt: string;
+  depositAddress: string;
+  platformAsset: PlatformAsset;
+}
+
+interface Statistics {
+  totalTransactions: number;
+  totalAssets: number;
+  totalTrades: number;
+  totalCopiedTrades: number;
+  totalFollowingTraders: number;
+  hasActiveSignal: boolean;
+  hasActiveStaking: boolean;
+  copyTradingStats: CopyTradingStats | null;
+}
+
+interface UserData {
+  id: string;
+  fullName: string;
+  email: string;
+  isEmailVerified: boolean;
+  referralCode: string;
+  createdAt: string;
+  updatedAt: string;
+  twoFactorEnabled: boolean;
+  allowWithdrawal: boolean;
+  kycStatus: "VERIFIED" | "PENDING" | "REJECTED" | "UNVERIFIED";
+  kycImage: string | null;
+  subscriptionBalance: number;
+  userStaking: StakingData[];
+  userSignal: SignalData[];
+  copyStats: CopyStats | null;
+  copyTradingStats: CopyTradingStats | null;
+  statistics: Statistics;
+  transactions: Transaction[];
+  userAssets: UserAsset[];
+}
+
 const UserDetails = () => {
   const params = useParams();
   const id = params.id as string;
+
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [expanded, setExpanded] = useState(true);
-  const [selectedPage, setSelectedPage] = useState("All");
-  const [selectedTradeType, setSelectedTradeType] = useState("All");
-  const [selectedStatus, setSelectedStatus] = useState("All");
+  const [activeModal, setActiveModal] = useState<"asset" | "signal" | "subscription" | "staking" | 'user' | null>(null);
 
-  const tradeHistory: TradeData[] = [
-    {
-      id: "TRD-0012837",
-      pair: "BTC/USDT",
-      type: "Long",
-      amount: 5000,
-      status: "Closed",
-      outcome: 380.45,
-      timestamp: "2025-05-22 14:34 UTC",
-    },
-    {
-      id: "TRD-0012837",
-      pair: "BTC/USDT",
-      type: "Long",
-      amount: 5000,
-      status: "Closed",
-      outcome: 380.45,
-      timestamp: "2025-05-22 14:34 UTC",
-    },
-    {
-      id: "TRD-0012837",
-      pair: "BTC/USDT",
-      type: "Long",
-      amount: 5000,
-      status: "Closed",
-      outcome: 380.45,
-      timestamp: "2025-05-22 14:34 UTC",
-    },
-  ];
-  const userData = {
-    name: "Nelson Peter",
-    email: "nelsopeter@gmail.com",
-    location: "England",
-    phone: "+24566896643",
-    wallets: ["MetaMask", "Trustwallet", "Phantom"],
-    lastLogin: "2023-10-15T14:30:00Z",
-    status: "Verified",
-  };
+  const fetchUserDetails = useCallback(async (abortController: AbortController) => {
+    if (!id) return;
+    setLoading(true);
+    setError(null);
 
-  const handleExport = () => {
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) throw new Error("Authentication token not found.");
+
+      const endpoint = API_ENDPOINT.ADMIN.GET_USER_DETAILS.replace("{id}", id);
+
+      const response = await fetch(endpoint, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        signal: abortController.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const responseData = await response.json();
+
+      if (!responseData.data) {
+        throw new Error("No user data found in response");
+      }
+
+      setUserData(responseData.data);
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        return;
+      }
+      const errorMessage = err instanceof Error ? err.message : "Failed to fetch user data";
+      setError(errorMessage);
+      console.error("Error fetching user details:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    const abortController = new AbortController();
+    fetchUserDetails(abortController);
+
+    return () => {
+      abortController.abort();
+    };
+  }, [id, fetchUserDetails]);
+
+  const handleExport = useCallback(() => {
+    if (!userData) return;
     setExporting(true);
-    // Simulate export process
     setTimeout(() => {
       setExporting(false);
-      alert(`User data for ${userData.name} exported successfully!`);
+      alert(`User data for ${userData.fullName} exported successfully!`);
     }, 1500);
-  };
+  }, [userData]);
+
+  const handleUpdateSuccess = useCallback(() => {
+    alert("Balance updated successfully!");
+    setActiveModal(null);
+    const abortController = new AbortController();
+    fetchUserDetails(abortController);
+  }, [fetchUserDetails]);
+
+
+
+ const platformAssetId = userData?.userAssets?.[0]?.platformAssetId;
+const signalId = userData?.userSignal?.[0]?.id;
+const stakeId = userData?.userStaking?.[0]?.id
+// Fixed Current Balances calculation
+const currentBalances = {
+  asset: { 
+    balance: userData?.userAssets?.[0]?.balance || 0,
+    platformAssetId: platformAssetId
+  },
+  signal: {
+    stakings: userData?.userSignal?.[0]?.stakings || 0,
+    strength: userData?.userSignal?.[0]?.strength || 0,
+    signalId: signalId
+  },
+  subscription: { subscriptionBalance: userData?.subscriptionBalance || 0 },
+
+  staking:{
+    totalBalance: userData?.userStaking?.[0].totalBalance || 0,
+    activeBalance: userData?.userStaking?.[0].activeBalance || 0,
+    stakeId: stakeId
+  }
+}
+
+
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return "Invalid Date";
+    }
   };
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen text-gray-400">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-solid border-current border-r-transparent mr-3 text-[#F2AF29]"></div>
+        Loading user data...
+      </div>
+    );
+  }
+
+  if (error || !userData) {
+    return (
+      <div className="flex justify-center items-center h-screen text-red-500">
+        <p className="p-4 bg-[#141E32] rounded-lg border border-red-800">
+          {error || "No user data found for this ID."}
+        </p>
+      </div>
+    );
+  }
+
+  const { kycStatus, isEmailVerified, statistics } = userData;
+  const isVerified = kycStatus === "VERIFIED";
+
   return (
-    <div className="p-6 w-full">
-      <div className="bg-[#141E323D] border border-[#141E32] rounded-lg p-6 w-full flex flex-col md:flex-row justify-between gap-6">
+    <div className="p-6 w-full text-white font-inter">
+      {/* User Profile Section */}
+      <div className="bg-[#141E323D] border border-[#141E32] rounded-lg p-6 w-full flex flex-col justify-between gap-6 mb-6">
         <div className="flex-1">
-          {/* User details */}
           <div className="flex flex-col gap-8">
             <div className="flex flex-col sm:flex-row gap-6">
               <div className="flex-shrink-0">
@@ -106,72 +289,125 @@ const UserDetails = () => {
               </div>
 
               <div className="text-[#E4E4E4] flex flex-col gap-1">
-                <h2 className="text-2xl font-bold">{userData.name}</h2>
+                <h2 className="text-2xl font-bold">{userData.fullName}</h2>
 
                 <div className="flex items-center gap-2">
                   <Mail size={14} className="text-[#797A80]" />
-                  <p>{userData.email}</p>
+                  <p>
+                    {userData.email}{" "}
+                    {isEmailVerified && (
+                      <span className="text-xs text-[#01BC8D]">(Verified)</span>
+                    )}
+                  </p>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <MapPin size={14} className="text-[#797A80]" />
-                  <p>{userData.location}</p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Phone size={14} className="text-[#797A80]" />
-                  <p>{userData.phone}</p>
-                </div>
-
-                <div className="bg-[#439A861F] text-[#439A86] w-fit px-3 py-1.5 flex items-center gap-1.5 rounded-md mt-2">
+                <div
+                  className={`w-fit px-3 py-1.5 flex items-center gap-1.5 rounded-md mt-2 ${
+                    isVerified
+                      ? "bg-[#439A861F] text-[#439A86]"
+                      : "bg-yellow-800/20 text-yellow-500"
+                  }`}
+                >
                   <CircleCheck size={14} />
-                  <span>Verified User</span>
+                  <span>KYC Status: {userData.kycStatus}</span>
                 </div>
 
                 <div className="flex flex-wrap gap-2 mt-3">
-                  {userData.wallets.map((wallet, index) => (
-                    <p
-                      key={index}
-                      className="bg-[#01BC8D0A] text-xs px-3 py-1.5 rounded-md"
-                    >
-                      {wallet}
-                    </p>
-                  ))}
+                  <span className="bg-[#01BC8D0A] text-xs px-3 py-1.5 rounded-md">
+                    Referral: {userData.referralCode}
+                  </span>
                 </div>
               </div>
             </div>
 
-            <div className="flex gap-12">
+            <div className="flex gap-12 flex-wrap">
               <div className="flex flex-col gap-1">
-                <h3 className="text-[#E8E8E880] text-sm uppercase">UID</h3>
-                <p className="text-lg font-medium">{id}</p>
+                <h3 className="text-[#E8E8E880] text-sm uppercase">User ID</h3>
+                <p className="text-lg font-medium">{userData.id}</p>
               </div>
 
               <div className="flex flex-col gap-1">
-                <h3 className="text-[#E8E8E880] text-sm">Last login time</h3>
+                <h3 className="text-[#E8E8E880] text-sm">Member Since</h3>
                 <p className="text-lg font-medium">
-                  {formatDate(userData.lastLogin)}
+                  {formatDate(userData.createdAt)}
                 </p>
               </div>
 
               <div className="flex flex-col gap-1">
-                <h3 className="text-[#E8E8E880] text-sm">Account status</h3>
-                <p className="text-lg text-[#01BC8D] font-medium flex items-center gap-1.5">
-                  {userData.status} <CircleCheck size={16} />
+                <h3 className="text-[#E8E8E880] text-sm">2FA Enabled</h3>
+                <p
+                  className={`text-lg font-medium flex items-center gap-1.5 ${
+                    userData.twoFactorEnabled
+                      ? "text-[#01BC8D]"
+                      : "text-red-500"
+                  }`}
+                >
+                  {userData.twoFactorEnabled ? "Yes" : "No"}
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <h3 className="text-[#E8E8E880] text-sm">Allow Withdrawal</h3>
+                <p
+                  className={`text-lg font-medium flex items-center gap-1.5 ${
+                    userData.allowWithdrawal ? "text-[#01BC8D]" : "text-red-500"
+                  }`}
+                >
+                  {userData.allowWithdrawal ? "Yes" : "No"}
                 </p>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="flex justify-center md:justify-end">
+        {/* Action Buttons */}
+        <div className="flex flex-wrap justify-between items-center gap-4">
+          <div className="flex flex-wrap gap-4">
+            <button
+              onClick={() => setActiveModal("asset")}
+              className="bg-[#01BC8D] hover:bg-[#00a87c] text-white font-medium px-4 py-2 rounded-md transition-colors"
+            >
+              Update Asset Balance
+            </button>
+
+            <button
+  onClick={() => setActiveModal("user")}
+  className="bg-[#439A86] hover:bg-[#3a8573] text-white font-medium px-4 py-2 rounded-md transition-colors"
+>
+  Update User
+</button>
+
+            <button
+              onClick={() => setActiveModal("signal")}
+              className="bg-[#F2AF29] hover:bg-[#e5a524] text-white font-medium px-4 py-2 rounded-md transition-colors"
+            >
+              Update Signal Balance
+            </button>
+            <button
+              onClick={() => setActiveModal("staking")}
+              className="bg-[#F2AF29] hover:bg-[#e5a524] text-white font-medium px-4 py-2 rounded-md transition-colors"
+            >
+              Update Staking Balance
+            </button>
+
+            <button
+              onClick={() => setActiveModal("subscription")}
+              className="bg-[#439A86] hover:bg-[#3a8573] text-white font-medium px-4 py-2 rounded-md transition-colors"
+            >
+              Update Subscription
+            </button>
+          </div>
+
           <button
             onClick={handleExport}
             disabled={exporting}
-            className="bg-[#F2AF29] hover:bg-[#e5a524] text-white font-medium w-full md:w-[150px] h-[44px] rounded-md flex items-center justify-center gap-2 cursor-pointer transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+            className="bg-[#F2AF29] hover:bg-[#e5a524] text-white font-medium px-6 py-2 rounded-md flex items-center justify-center gap-2 cursor-pointer transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {exporting ? (
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent"></div>
+              <>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent"></div>
+                Exporting...
+              </>
             ) : (
               <>
                 <p>Export</p>
@@ -182,191 +418,266 @@ const UserDetails = () => {
         </div>
       </div>
 
+      {/* Statistics Section */}
       <div className="mt-6">
-        <div className="flex items-center  mb-6">
-          <h2 className="text-xl font-bold">Trading Information</h2>
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="cursor-pointer"
-          >
-            <ChevronDown
-              className={`w-5 h-5 text-gray-400 ${
-                expanded ? "rotate-0" : "rotate-180"
-              }`}
-            />
-          </button>
+        <div
+          className="flex items-center gap-4 mb-6 cursor-pointer"
+          onClick={() => setExpanded(!expanded)}
+        >
+          <h2 className="text-xl font-bold">Account Statistics</h2>
+          <ChevronDown
+            className={`w-5 h-5 text-gray-400 transition-transform ${
+              expanded ? "rotate-0" : "rotate-180"
+            }`}
+          />
         </div>
         {expanded && (
           <div className="bg-[#141E323D] border border-[#141E32] rounded-lg p-6 w-full">
-            <div className="grid grid-cols-5 gap-6 mb-8">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 mb-8 text-white">
+              <div>
+                <p className="text-gray-400 text-sm mb-1">Total Assets</p>
+                <p className="text-2xl font-bold">
+                  {statistics.totalAssets.toLocaleString()}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-400 text-sm mb-1">Total Transactions</p>
+                <p className="text-2xl font-bold">
+                  {statistics.totalTransactions.toLocaleString()}
+                </p>
+              </div>
               <div>
                 <p className="text-gray-400 text-sm mb-1">Total Trades</p>
-                <p className="text-2xl font-bold">131</p>
-              </div>
-              <div>
-                <p className="text-gray-400 text-sm mb-1">Win Rate</p>
-                <p className="text-2xl font-bold">62%</p>
-              </div>
-              <div>
-                <p className="text-gray-400 text-sm mb-1">Profit/Loss</p>
-                <p className="text-2xl font-bold text-emerald-400">
-                  +$19,920.45
+                <p className="text-2xl font-bold">
+                  {statistics.totalTrades.toLocaleString()}
                 </p>
               </div>
               <div>
-                <p className="text-gray-400 text-sm mb-1">
-                  Total Volume Traded
+                <p className="text-gray-400 text-sm mb-1">Copied Trades</p>
+                <p className="text-2xl font-bold">
+                  {statistics.totalCopiedTrades.toLocaleString()}
                 </p>
-                <p className="text-2xl font-bold">$1,372,800</p>
               </div>
               <div>
-                <p className="text-gray-400 text-sm mb-1">Average Trade Size</p>
-                <p className="text-2xl font-bold">$4,835</p>
+                <p className="text-gray-400 text-sm mb-1">Active Staking</p>
+                <p
+                  className={`text-2xl font-bold ${
+                    statistics.hasActiveStaking
+                      ? "text-emerald-400"
+                      : "text-red-500"
+                  }`}
+                >
+                  {statistics.hasActiveStaking ? "Yes" : "No"}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-400 text-sm mb-1">Active Signal</p>
+                <p
+                  className={`text-2xl font-bold ${
+                    statistics.hasActiveSignal
+                      ? "text-emerald-400"
+                      : "text-red-500"
+                  }`}
+                >
+                  {statistics.hasActiveSignal ? "Yes" : "No"}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-400 text-sm mb-1">Following Traders</p>
+                <p className="text-2xl font-bold">
+                  {statistics.totalFollowingTraders.toLocaleString()}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-400 text-sm mb-1">Subscription Balance</p>
+                <p className="text-2xl font-bold">
+                  {formatCurrency(userData.subscriptionBalance)}
+                </p>
               </div>
             </div>
 
-            <div className="flex gap-10">
-              <div>
-                <p className="text-gray-400 text-sm mb-2">Active Markets</p>
-                <div className="space-y-1">
-                  <span className="inline-block text-xs bg-[#141E325C] px-2 py-1 rounded">
-                    Margin
-                  </span>
-                  <span className="inline-block text-xs bg-[#141E325C] px-2 py-1 rounded ml-1">
-                    Spot
-                  </span>
-                  <span className="inline-block text-xs bg-[#141E325C] px-2 py-1 rounded ml-1">
-                    Copy Trading
-                  </span>
-                </div>
-              </div>
-              <div>
-                <p className="text-gray-400 text-sm mb-2">
-                  Primary Pairs Traded
+            {/* Current Balances Display */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-700">
+              <div className="bg-[#0A0F1C] p-4 rounded-lg">
+                <h3 className="text-gray-400 text-sm">Current Asset Balance</h3>
+                <p className="text-xl font-bold">
+                  {formatCurrency(currentBalances.asset.balance)}
                 </p>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 p-2 bg-orange-500 rounded-full flex items-center justify-center">
-                    <span className="text-xs font-bold">₿</span>
-                  </div>
-                  <span className="text-sm">BTC/USDT</span>
-                  <div className="w-2 h-2 p-2 bg-gray-600 rounded-full flex items-center justify-center ml-2">
-                    <span className="text-xs font-bold">Ξ</span>
-                  </div>
-                  <span className="text-sm">ETH/USDT</span>
-                  <div className="w-2 h-2 p-2 bg-blue-500 rounded-full flex items-center justify-center ml-2">
-                    <span className="text-xs font-bold">L</span>
-                  </div>
-                  <span className="text-sm">LTC/USDT</span>
-                </div>
               </div>
-              <div>
-                <p className="text-gray-400 text-sm mb-2">
-                  Copy Trade Subscribed
+              <div className="bg-[#0A0F1C] p-4 rounded-lg">
+                <h3 className="text-gray-400 text-sm">Current Signal Staking</h3>
+                <p className="text-xl font-bold">
+                  {formatCurrency(currentBalances.signal.stakings)}
                 </p>
-                <p className="text-sm">JapidTRex</p>
+                <p className="text-sm text-gray-400">
+                  Strength: {(currentBalances.signal.strength * 100).toFixed(1)}%
+                </p>
               </div>
-              <div>
-                <p className="text-gray-400 text-sm mb-2">Copy Mode</p>
-                <p className="text-sm">FixedRatio:1:1.5</p>
+              <div className="bg-[#0A0F1C] p-4 rounded-lg">
+                <h3 className="text-gray-400 text-sm">Current Subscription</h3>
+                <p className="text-xl font-bold">
+                  {formatCurrency(currentBalances.subscription.subscriptionBalance)}
+                </p>
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Trade History */}
-      <div className="pt-4">
-        <h2 className="text-xl font-bold mb-6">Trade History</h2>
-
-        {/* Filters */}
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <label className="text-gray-400 text-sm mb-2 block">Pair</label>
-            <div className="relative flex items-center">
-              <select
-                className="w-full bg-[#10131F] border rounded-lg px-3 py-2 text-white appearance-none pr-8"
-                value={selectedPage}
-                onChange={(e) => setSelectedPage(e.target.value)}
-              >
-                <option>All</option>
-                <option>1</option>
-                <option>2</option>
-              </select>
-              <ChevronDown className="absolute right-3 w-4 h-4 text-gray-400 pointer-events-none" />
+      {/* User Assets Section */}
+      <div className="mt-6">
+        <h2 className="text-xl font-bold mb-6">User Assets</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {userData.userAssets.map((asset) => (
+            <div
+              key={asset.id}
+              className="bg-[#141E323D] border border-[#141E32] rounded-lg p-4"
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="font-semibold text-lg">
+                    {asset.platformAsset.name}
+                  </h3>
+                  <p className="text-sm text-gray-400">
+                    {asset.platformAsset.symbol}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Network: {asset.platformAsset.network}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold">
+                    {asset.balance.toLocaleString()}
+                  </p>
+                  <p className="text-sm text-gray-400">Balance</p>
+                </div>
+              </div>
             </div>
-          </div>
-          <div>
-            <label className="text-gray-400 text-sm mb-2 block">
-              Trade Type
-            </label>
-            <div className="relative">
-              <select
-                className="w-full bg-[#10131F] border rounded-lg px-3 py-2 text-white appearance-none pr-8"
-                value={selectedTradeType}
-                onChange={(e) => setSelectedTradeType(e.target.value)}
-              >
-                <option>All</option>
-                <option>Long</option>
-                <option>Short</option>
-              </select>
-              <ChevronDown className="absolute right-2 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" />
-            </div>
-          </div>
-          <div>
-            <label className="text-gray-400 text-sm mb-2 block">Status</label>
-            <div className="relative">
-              <select
-                className="w-full bg-[#10131F] border rounded-lg px-3 py-2 text-white appearance-none pr-8"
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-              >
-                <option>All</option>
-                <option>Open</option>
-                <option>Closed</option>
-              </select>
-              <ChevronDown className="absolute right-2 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" />
-            </div>
-          </div>
+          ))}
         </div>
+        {userData.userAssets.length === 0 && (
+          <div className="text-center py-8 text-gray-500 bg-[#141E323D] rounded-lg border border-[#141E32]">
+            No assets found for this user.
+          </div>
+        )}
+      </div>
 
-         {/* Trade History Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full">
+      {/* Transaction History Section */}
+      <div className="mt-6">
+        <h2 className="text-xl font-bold mb-6">Transaction History</h2>
+        <div className="overflow-x-auto rounded-lg border border-[#141E32]">
+          <table className="w-full min-w-[800px] text-left">
             <thead>
-              <tr className="text-gray-400 text-sm border-b border-[#141E32]">
-                <th className="text-left py-3 px-2">Trade ID</th>
-                <th className="text-left py-3 px-2">Pair</th>
-                <th className="text-left py-3 px-2">Type</th>
-                <th className="text-left py-3 px-2">Amount</th>
-                <th className="text-left py-3 px-2">Status</th>
-                <th className="text-left py-3 px-2">Outcome</th>
-                <th className="text-left py-3 px-2">Timestamp</th>
+              <tr className="text-gray-400 text-xs uppercase bg-[#060A17] border-b border-[#141E32]">
+                <th className="py-3 px-4">Transaction ID</th>
+                <th className="py-3 px-4">Type</th>
+                <th className="py-3 px-4">Asset</th>
+                <th className="py-3 px-4">Amount</th>
+                <th className="py-3 px-4">Status</th>
+                <th className="py-3 px-4">Date</th>
               </tr>
             </thead>
             <tbody>
-              {tradeHistory.map((trade, index) => (
-                <tr key={index} className="border-b border-[#141E32] hover:bg-slate-750">
-                  <td className="py-4 px-2 text-sm">{trade.id}</td>
-                  <td className="py-4 px-2 text-sm">{trade.pair}</td>
-                  <td className="py-4 px-2">
-                    <span className={`text-sm px-2 py-1 rounded ${
-                      trade.type === 'Long' 
-                        ? 'text-emerald-400 bg-emerald-400/10' 
-                        : 'text-red-400 bg-red-400/10'
-                    }`}>
-                      {trade.type}
+              {userData.transactions.map((transaction) => (
+                <tr
+                  key={transaction.id}
+                  className="border-b border-[#141E32] hover:bg-[#10131F] transition-colors duration-150"
+                >
+                  <td className="py-4 px-4 text-sm font-medium">
+                    {transaction.id.slice(0, 8)}...
+                  </td>
+                  <td className="py-4 px-4">
+                    <span
+                      className={`text-xs font-semibold px-2 py-1 rounded ${
+                        transaction.type === "DEPOSIT"
+                          ? "text-emerald-400 bg-emerald-400/10"
+                          : transaction.type === "WITHDRAWAL"
+                          ? "text-red-400 bg-red-400/10"
+                          : "text-blue-400 bg-blue-400/10"
+                      }`}
+                    >
+                      {transaction.type}
                     </span>
                   </td>
-                  <td className="py-4 px-2 text-sm">${trade.amount.toLocaleString()}</td>
-                  <td className="py-4 px-2 text-sm">{trade.status}</td>
-                  <td className="py-4 px-2 text-sm text-emerald-400">+${trade.outcome}</td>
-                  <td className="py-4 px-2 text-sm text-gray-400">{trade.timestamp}</td>
+                  <td className="py-4 px-4 text-sm">
+                    {transaction.platformAsset.symbol}
+                  </td>
+                  <td className="py-4 px-4 text-sm">
+                    {formatCurrency(transaction.amount)}
+                  </td>
+                  <td className="py-4 px-4 text-sm">
+                    <span
+                      className={`px-2 py-1 rounded text-xs ${
+                        transaction.status === "COMPLETED"
+                          ? "bg-[#01BC8D14] text-[#01BC8D]"
+                          : "bg-yellow-800/20 text-yellow-500"
+                      }`}
+                    >
+                      {transaction.status}
+                    </span>
+                  </td>
+                  <td className="py-4 px-4 text-xs text-gray-400">
+                    {formatDate(transaction.createdAt)}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          {userData.transactions.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              No transaction history found.
+            </div>
+          )}
         </div>
       </div>
+
+ {/* Balance Update Modals */}
+{activeModal && activeModal !== 'user' && (
+  <UpdateBalanceModal
+    isOpen={!!activeModal}
+    onClose={() => setActiveModal(null)}
+    userId={userData.id}
+    title={
+      activeModal === "asset"
+        ? "Asset Balance"
+        : activeModal === "signal"
+        ? "Signal Balance"
+        : activeModal === "staking"
+        ? "Staking Balance"
+        : "Subscription Balance"
+    }
+    balanceType={activeModal}
+    currentData={
+      activeModal === "asset"
+        ? currentBalances.asset
+        : activeModal === "signal"
+        ? currentBalances.signal
+        : activeModal === "staking"
+        ? currentBalances.staking
+        : currentBalances.subscription
+    }
+    onUpdateSuccess={handleUpdateSuccess}
+    platformAssetId={platformAssetId}
+    signalId={signalId}
+  />
+)}
+
+{activeModal === 'user' && (
+  <UpdateUserModal
+    isOpen={true}
+    onClose={() => setActiveModal(null)}
+    userId={userData.id}
+    currentUserData={{
+      fullName: userData.fullName,
+      email: userData.email,
+      isEmailVerified: userData.isEmailVerified,
+      twoFactorEnabled: userData.twoFactorEnabled,
+      allowWithdrawal: userData.allowWithdrawal,
+      kycStatus: userData.kycStatus,
+    }}
+    onUpdateSuccess={handleUpdateSuccess}
+  />
+)}
     </div>
   );
 };

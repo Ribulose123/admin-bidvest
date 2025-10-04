@@ -31,7 +31,14 @@ export const API_ENDPOINT={
         DELETE_TRANSACTIONS:`${API_BASE_URL}/transaction/{id}`
     },
     ADMIN:{
-        UPDATE_TRANSACTION:`${API_BASE_URL}/admin/transaction/{transactionId}`
+        UPDATE_TRANSACTION:`${API_BASE_URL}/admin/transaction/{transactionId}`,
+        GET_ALL_USERS:`${API_BASE_URL}/admin/users`,
+        GET_USER_DETAILS:`${API_BASE_URL}/admin/users/{id}`,
+        UPDATE_STAKING_BALANCE:`${API_BASE_URL}/admin/users/staking`,
+        UPDATE_ASSET_BALANCE: `${API_BASE_URL}/admin/user/assets`,
+    UPDATE_SIGNAL_BALANCE: `${API_BASE_URL}/admin/user/signal`,
+    UPDATE_SUBSCRIPTION_BALANCE: `${API_BASE_URL}/admin/user/subscription`,
+    UPDATE_USER: `${API_BASE_URL}/admin/users/{id}`,
     },
 
     USER:{
@@ -44,6 +51,7 @@ export const API_ENDPOINT={
         DELETE_TRADERS:`${API_BASE_URL}/trade/trader/{traderId}`,
         EDIT_TRADERS: `${API_BASE_URL}/trade/trader/{traderId}`,
         SYNC_FOLLOWERS:`${API_BASE_URL}/trade/admin/sync-trader-followers`,
-        TRADER_TRADER:`${API_BASE_URL}/trade/admin/trader-trade`
+        TRADER_TRADER:`${API_BASE_URL}/trade/admin/trader-trade`,
+        
     }
 }
