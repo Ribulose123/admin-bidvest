@@ -60,6 +60,8 @@ export const API_ENDPOINT={
         EDIT_TRADERS: `${API_BASE_URL}/trade/trader/{traderId}`,
         SYNC_FOLLOWERS:`${API_BASE_URL}/trade/admin/sync-trader-followers`,
         TRADER_TRADER:`${API_BASE_URL}/trade/admin/trader-trade`,
+        EDIT_TRADE: `${API_BASE_URL}/trade/admin/trade/{tradeId}`,
+        GET_ALL_TRADES:`${API_BASE_URL}/trade/admin/trades`
         
     }
 }

@@ -1,59 +1,6 @@
 import React, {useState} from 'react'
 import { Loader2 } from 'lucide-react';
-
-// Define the nested interfaces
-interface TraderFollower {
-  id: string;
-}
-
-interface TraderPerformance {
-  id: string;
-}
-
-interface TraderTrade {
-  id: string;
-}
-
-interface TraderSocialMetrics {
-  id: string;
-}
-
-interface UserFavoriteTrader {
-  id: string;
-}
-
-interface Trade {
-  id: string;
-  status: string;
-}
-
-interface Trader {
-  id: string;
-  username: string;
-  profilePicture?: string;
-  status: "ACTIVE" | "PAUSED";
-  maxCopiers: number;
-  currentCopiers: number;
-  totalCopiers: number;
-  totalPnL: number;
-  copiersPnL: number;
-  aum: number;
-  riskScore: number;
-  badges?: string[];
-  isPublic: boolean;
-  commissionRate: number;
-  minCopyAmount: number;
-  maxCopyAmount?: number;
-  tradingPairs: string[];
-  followers: TraderFollower[];
-  performances: TraderPerformance[];
-  trades: TraderTrade[];
-  socialMetrics?: TraderSocialMetrics;
-  favoritedBy: UserFavoriteTrader[];
-  actualTrades: Trade[];
-  createdAt: Date;
-  updatedAt: Date;
-}
+import { Trader } from '@/app/type/transctions';
 
 interface SyncFollowerModalProps{
     isOpen: boolean;
