@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useMemo, useCallback , useRef} from "react";
 import { getAuthToken } from "../utils/auth";
 import { API_ENDPOINT } from "../config/api";
-import { useRouter } from "next/navigation";
+/* import { useRouter } from "next/navigation"; */
 import {
     Search,
     ChevronDown,
@@ -51,7 +51,7 @@ const Withdrawal = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const actionMenuRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
+  /* const router = useRouter(); */
 
   useEffect(() => {
   const fetchFilteredTransactions = async () => {
@@ -461,13 +461,27 @@ const filteredTransactions = useMemo(() => {
             };
 
       const transactionTypes = useMemo(() => {
+        
     const types = [...new Set(transactions.map(t => t.type))];
     return ['All', ...types];
   }, [transactions]);
 
-  const habdleNavigation= (id:string)=>{
-    router.push(`/admin/withdrawalmanagement/${id}`);
+ /*  const habdleNavigation= (id:string)=>{
+console.log("Navigating to transaction ID:", id);
+
+     if (!id || id.trim() === "") {
+    console.error("Invalid transaction ID");
+    return;
   }
+   const transactionExists = transactions.find(t => t.id === id);
+  if (!transactionExists) {
+    console.error("Transaction not found in current data:", id);
+    return;
+  }
+  
+  console.log("Full navigation path:", `/admin/withdrawalmanagement/${id}`);
+    router.push(`/admin/withdrawalmanagement/${id}`);
+  } */
   return (
     <div className="min-h-screen text-gray-100 p-8 font-inter ">
       <div className="max-w-7xl mx-auto">
@@ -570,7 +584,7 @@ const filteredTransactions = useMemo(() => {
                   currentTransactions.map((transaction) => (
                     <tr
                       key={transaction.id}
-                        onClick={() => habdleNavigation(transaction.id)}
+                        /* onClick={() => habdleNavigation(transaction.id)} */
                       className="hover:bg-gray-700 transition-colors duration-200"
                     >
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-200">

@@ -7,15 +7,14 @@ import Image from "next/image";
 import {
   CircleCheck,
   UploadIcon,
-  Mail,
 } from "lucide-react";
 import Reduction from "./Reduction";
 import DepositHistory from "./DepositHistory";
 
 interface UserDetails {
   id: string;
-  fullName: string;
-  email: string;
+  /* fullName: string;
+  email: string; */
 }
 
 interface TransactionDetails {
@@ -162,14 +161,14 @@ const DepositDetails: React.FC = () => {
                 </div>
 
                 <div className="text-[#E4E4E4] flex flex-col gap-1">
-                  <h2 className="text-2xl font-bold">
+                 {/*  <h2 className="text-2xl font-bold">
                     {transactionDetails.user.fullName}
                   </h2>
-
-                  <div className="flex items-center gap-2">
+ */}
+                  {/* <div className="flex items-center gap-2">
                     <Mail size={14} className="text-[#797A80]" />
                     <p>{transactionDetails.user.email}</p>
-                  </div>
+                  </div> */}
 
                   {/* <div className="flex items-center gap-2">
                   <MapPin size={14} className="text-[#797A80]" />

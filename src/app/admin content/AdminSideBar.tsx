@@ -4,10 +4,8 @@ import React, { useState, useEffect, useCallback } from 'react'
 import {
   Home,
   Users,
-  CreditCard,
   FileText,
   Trash2,
-  Settings,
   Shield,
   BarChart3,
   ChevronDown,
@@ -64,12 +62,12 @@ const AdminSideBar = () => {
       hasDropdown: true,
       children: [
         { id: 'manage-users', label: 'Manage Users', href: '/admin/usermanagement' },
-        { id: 'trade-management', label: 'Trade Management', href: '/admin/trademangment' },
+        { id: 'trade-management', label: 'Trade Management', href: '/admin/alltrade' },
         { id: 'manage-copy-experts', label: 'Manage Copy Experts', href: '/admin/copytrade' },
-        { id: 'KYC Verfication', label: 'KYC Verfication', href: '/admin/kycverfication' }
+        /* { id: 'KYC Verfication', label: 'KYC Verfication', href: '/admin/kycverfication' } */
       ]
     },
-    {
+  /*   {
       id: 'transactions',
       label: 'Transactions',
       icon: <CreditCard className="w-5 h-5" />,
@@ -78,7 +76,7 @@ const AdminSideBar = () => {
         { id: 'wallet', label: 'Wallet', href: '/admin/wallet' },
         { id: 'card-transactions', label: 'Card Transactions', href: '/admin/cardtranstions' }
       ]
-    },
+    }, */
     {
       id: 'deposit-management',
       label: 'Deposit Management',
@@ -92,9 +90,9 @@ const AdminSideBar = () => {
       icon: <Trash2 className="w-5 h-5" />,
       hasDropdown: true,
       children: [
-        { id: 'pending-withdrawals', label: 'Withdrawals Settings', href: '/admin/withdrawalsettings' },
+        /* { id: 'pending-withdrawals', label: 'Withdrawals Settings', href: '/admin/withdrawalsettings' }, */
         { id: 'Withdrawl-management', label: 'Withdrawals Management', href: '/admin/withdrawalmanagement' },
-        { id: 'withdrawal-history', label: 'Code Settings (2FA)', href: '#' }
+        /* { id: 'withdrawal-history', label: 'Code Settings (2FA)', href: '#' } */
       ]
     },
     {
@@ -103,9 +101,9 @@ const AdminSideBar = () => {
       icon: <Wallet className="w-5 h-5" />,
       hasDropdown: true,
       children: [
-        { id: 'user-wallet', label: 'User Wallet', href: '/admin/walletoverview' },
+      /*   { id: 'user-wallet', label: 'User Wallet', href: '/admin/walletoverview' },
         { id: 'wallet-address', label: 'Wallet Address', href: '/admin/newaddress' },
-        { id: 'manual-adjustments', label: 'Manual Adjustments', href: '/admin/manualmang' },
+        { id: 'manual-adjustments', label: 'Manual Adjustments', href: '/admin/manualmang' }, */
         { id: 'wallet-connect', label: 'Wallet-Connet', href: '/admin/walletconnet' },
       ]
     },
@@ -120,7 +118,7 @@ const AdminSideBar = () => {
         { id: 'stakes', label: 'Stakes', href: '/admin/stake' }
       ]
     },
-    {
+    /* {
       id: 'analytics-reports',
       label: 'Analytics & Reports',
       icon: <BarChart3 className="w-5 h-5" />,
@@ -129,8 +127,8 @@ const AdminSideBar = () => {
         { id: 'assets', label: 'Assets', href: '#' },
         { id: 'deposit-management-sub', label: 'Deposit Management', href: '#' }
       ]
-    },
-    {
+    }, */
+/*     {
       id: 'settings-control',
       label: 'Settings & Control',
       icon: <Settings className="w-5 h-5" />,
@@ -139,7 +137,7 @@ const AdminSideBar = () => {
         { id: 'security', label: 'Security', href: '/admin/security' },
         { id: 'limits-global', label: 'Limits & Global Settings', href: '/admin/limit' }
       ]
-    }
+    } */
   ], []);
 
   // Auto-expand parent items if one of their children is active
