@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { getAuthToken } from "../utils/auth";
 import { API_ENDPOINT } from "../config/api";
-import { useRouter } from "next/navigation";
+/* import { useRouter } from "next/navigation"; */
 
 interface Transaction {
   id: string;
@@ -43,7 +43,7 @@ const AdminDeposit = () => {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const actionMenuRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
+ /*  const router = useRouter(); */
 useEffect(() => {
   const fetchFilteredTransactions = async () => {
     const token = getAuthToken();
@@ -64,7 +64,7 @@ useEffect(() => {
 
       const allowedTypes = [
         "DEPOSIT",
-        "SIGNALS",
+        "SIGNAL",
         "STAKING",
         "SUBSCRIPTION"
       ];
@@ -440,9 +440,9 @@ useEffect(() => {
     return ['All', ...types];
   }, [transactions]);
 
-  const handleNavigation = (id:string)=>{
+ /*  const handleNavigation = (id:string)=>{
     router.push(`/admin/deposit/${id}`)
-  }
+  } */
   return (
     <div className="min-h-screen text-gray-100 p-8 font-inter ">
       <div className="max-w-7xl mx-auto">
@@ -545,7 +545,6 @@ useEffect(() => {
                   currentTransactions.map((transaction) => (
                     <tr
                       key={transaction.id}
-                      onClick={()=>handleNavigation(transaction.id)}
                       className="hover:bg-gray-700 transition-colors duration-200"
                     >
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-200">
@@ -558,7 +557,7 @@ useEffect(() => {
                         {formatDate(transaction.createdAt)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                        ${transaction.amount.toFixed(2)}
+                        {transaction.amount.toFixed(2)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <span

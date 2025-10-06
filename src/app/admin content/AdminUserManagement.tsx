@@ -14,10 +14,13 @@ import {
   Eye,
   Trash2,
   XCircle,
+  X,
+  CheckCircle,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import { API_ENDPOINT } from "../config/api";
+import Image from "next/image";
 
 interface PlatformAsset {
   id: string;
@@ -39,9 +42,10 @@ interface CoinGeckoPrice {
 }
 
 interface User {
-  id: string; // Keep 'id' (likely a UUID)
-  // REMOVED: userId: string;
+  id: string;
   email: string;
+  kycImage: string;
+  kycStatus?: 'PENDING' | 'VERIFIED' | 'REJECTED'; 
   joined: string;
   userAssets: UserAsset[];
   status: "Active" | "Inactive" | "Suspended";
@@ -82,8 +86,11 @@ const AdminUserManagement = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [prices, setPrices] = useState<CoinGeckoPrice>({});
-
+  const [prices, setPrices] = useState<CoinGeckoPrice>({}); // Added missing state
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [showImageModal, setShowImageModal] = useState<boolean>(false);
+  const [selectedUserForKYC, setSelectedUserForKYC] = useState<User | null>(null);
+  const [kycActionsLoading, setKycActionsLoading] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [filterOutcome, setFilterOutcome] = useState<string>("All");
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -135,10 +142,7 @@ const AdminUserManagement = () => {
     []
   );
 
-  // UPDATED: Use 'id' (UUID) instead of the removed 'userId' for signal strength calculation.
   const calculateSignalStrength = useCallback((user: User): string => {
-    // Convert the user's UUID (id) to a numeric hash for "random" generation
-    // Uses the first few digits of the hash code of the UUID
     const uuidHash = user.id
       .split("")
       .reduce((acc, char) => acc + char.charCodeAt(0), 0);
@@ -169,7 +173,7 @@ const AdminUserManagement = () => {
         }
 
         const userResponseData = await userResponse.json();
-        
+        console.log('user data', userResponseData);
         let fetchedUsers: User[] = [];
         if (
           userResponseData.data &&
@@ -209,21 +213,25 @@ const AdminUserManagement = () => {
   }, []);
 
   const usersWithCalculatedFields = useMemo(() => {
-    if (!Array.isArray(users)) return [];
-    return users.map((user) => ({
+  if (!Array.isArray(users)) return [];
+  return users.map((user) => {
+    const totalBalance = calculateTotalBalance(user, prices);
+    const signalStrength = calculateSignalStrength(user);
+    
+    return {
       ...user,
-      displayBalance: `$${calculateTotalBalance(user, prices).toFixed(2)}`,
-      signalStrength: calculateSignalStrength(user),
+      displayBalance: `$${totalBalance.toFixed(2)}`,
+      signalStrength: signalStrength,
       outcome: user.status === "Active" ? "Active" : "Inactive",
-    }));
-  }, [users, prices, calculateTotalBalance, calculateSignalStrength]);
+    };
+  });
+}, [users, prices, calculateTotalBalance, calculateSignalStrength]);
 
   const filteredUsers = useMemo(() => {
     return usersWithCalculatedFields.filter((user) => {
       const matchesSearch =
         searchTerm === "" ||
-        // REMOVED: user.userId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.id.toLowerCase().includes(searchTerm.toLowerCase()) || // Search the UUID instead
+        user.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.joined.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.displayBalance.toLowerCase().includes(searchTerm.toLowerCase());
@@ -257,6 +265,64 @@ const AdminUserManagement = () => {
     },
     [router]
   );
+
+  const updateKYCStatus = async (userId: string, newStatus: 'VERIFIED' | 'REJECTED') => {
+    setKycActionsLoading(`${newStatus}-${userId}`);
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) throw new Error("No authentication token found");
+
+      const response = await fetch(`${API_ENDPOINT.ADMIN.UPDATE_USER.replace('{id}', userId)}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          kycStatus: newStatus
+        })
+      });
+
+      if (response.ok) {
+        // Update local state
+        setUsers(prev => prev.map(user => 
+          user.id === userId 
+            ? { ...user, kycStatus: newStatus }
+            : user
+        ));
+        setShowImageModal(false);
+        setSelectedUserForKYC(null);
+        setSelectedImage(null);
+      } else {
+        throw new Error('Failed to update KYC status');
+      }
+    } catch (error) {
+      console.error('Error updating KYC status:', error);
+      setError('Failed to update KYC status');
+    } finally {
+      setKycActionsLoading(null);
+    }
+  };
+
+  const handleImageClick = (user: User) => {
+    if (user.kycImage) {
+      setSelectedImage(user.kycImage);
+      setSelectedUserForKYC(user);
+      setShowImageModal(true);
+    }
+  };
+
+  const handleApproveKYC = () => {
+    if (selectedUserForKYC) {
+      updateKYCStatus(selectedUserForKYC.id, 'VERIFIED');
+    }
+  };
+
+  const handleRejectKYC = () => {
+    if (selectedUserForKYC) {
+      updateKYCStatus(selectedUserForKYC.id, 'REJECTED');
+    }
+  };
 
   const handleActionClick = useCallback(
     (userId: string, event: React.MouseEvent<HTMLButtonElement>) => {
@@ -414,7 +480,7 @@ const AdminUserManagement = () => {
 
   return (
     <div className="min-h-screen text-gray-100 p-8 font-inter">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-full mx-auto">
         <h1 className="text-2xl font-semibold mb-6">
           Users ({filteredUsers.length})
         </h1>
@@ -461,17 +527,19 @@ const AdminUserManagement = () => {
                   Email
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                  Joined
+                  KYC Image
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  KYC Status
+                </th>
+                
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                   Total Balance (USD)
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                   Signal Strength
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                  Status
-                </th>
+               
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                   Actions
                 </th>
@@ -491,28 +559,40 @@ const AdminUserManagement = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-200">
                       {user.email}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                      {user.joined}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-200">
+                      {user.kycImage ? (
+                        <Image 
+                          src={user.kycImage} 
+                          alt="KYC Document" 
+                          width={48}
+                          height={48}
+                          className="w-12 h-12 rounded-md cursor-pointer object-cover hover:opacity-80 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleImageClick(user);
+                          }}
+                        />
+                      ) : (
+                        <span className="text-gray-400">No Image</span>
+                      )}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        user.kycStatus === 'VERIFIED' ? 'bg-[#01BC8D14] text-[#01BC8D]' :
+                        user.kycStatus === 'REJECTED' ? 'bg-[#F2364514] text-[#F23645]' :
+                        'bg-yellow-800 text-yellow-300'
+                      }`}>
+                        {user.kycStatus || 'PENDING'}
+                      </span>
+                    </td>
+                   
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 font-semibold">
                       {user.displayBalance}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                       {user.signalStrength}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          user.status === "Active"
-                            ? "bg-[#01BC8D14] text-[#01BC8D]"
-                            : user.status === "Suspended"
-                            ? "bg-[#F2AF2914] text-[#F2AF29]"
-                            : "bg-[#F2364514] text-[#F23645]"
-                        }`}
-                      >
-                        {user.status}
-                      </span>
-                    </td>
+                   
                     <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                       <button
                         className="text-gray-400 hover:text-white focus:outline-none p-1 rounded-md hover:bg-gray-600 transition-colors duration-200"
@@ -525,10 +605,7 @@ const AdminUserManagement = () => {
                 ))
               ) : (
                 <tr>
-                  <td
-                    colSpan={7}
-                    className="px-6 py-8 text-center text-gray-400"
-                  >
+                  <td colSpan={9} className="px-6 py-8 text-center text-gray-400">
                     No users match your criteria.
                   </td>
                 </tr>
@@ -566,6 +643,95 @@ const AdminUserManagement = () => {
             </div>
           )}
         </div>
+
+        {/* KYC Image Modal */}
+        {showImageModal && selectedImage && selectedUserForKYC && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <div className="bg-[#1E293B] rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+              <div className="p-6 border-b border-gray-700 flex justify-between items-center">
+                <div>
+                  <h3 className="text-xl font-semibold">KYC Document Verification</h3>
+                  <p className="text-sm text-gray-400 mt-1">
+                    User: {selectedUserForKYC.email} | ID: {selectedUserForKYC.id}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowImageModal(false);
+                    setSelectedImage(null);
+                    setSelectedUserForKYC(null);
+                  }}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <div className="p-6 flex flex-col items-center">
+                <div className="mb-6 w-full flex justify-center bg-black/50 rounded-lg p-4">
+                  <Image 
+                    src={selectedImage} 
+                    alt="KYC Document Full Size" 
+                    width={600}
+                    height={400}
+                    className="max-w-full max-h-[60vh] object-contain rounded-lg"
+                  />
+                </div>
+                
+                <div className="flex gap-4 w-full max-w-md">
+                  <button
+                    onClick={handleRejectKYC}
+                    disabled={kycActionsLoading !== null}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center"
+                  >
+                    {kycActionsLoading === `REJECTED-${selectedUserForKYC.id}` ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Rejecting...
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="w-4 h-4 mr-2" />
+                        Reject KYC
+                      </>
+                    )}
+                  </button>
+                  
+                  <button
+                    onClick={handleApproveKYC}
+                    disabled={kycActionsLoading !== null}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center"
+                  >
+                    {kycActionsLoading === `VERIFIED-${selectedUserForKYC.id}` ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Approving...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Approve KYC
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* KYC Status Information */}
+                <div className="mt-6 w-full max-w-md text-sm text-gray-400">
+                  <p className="text-center">
+                    Current Status: <span className={`font-semibold ${
+                      selectedUserForKYC.kycStatus === 'VERIFIED' ? 'text-green-400' :
+                      selectedUserForKYC.kycStatus === 'REJECTED' ? 'text-red-400' :
+                      'text-yellow-400'
+                    }`}>
+                      {selectedUserForKYC.kycStatus || 'PENDING'}
+                    </span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-col md:flex-row items-center justify-between mt-6 text-sm text-gray-300">
           <div className="mb-4 md:mb-0">
