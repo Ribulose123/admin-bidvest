@@ -12,6 +12,8 @@ import {
   CheckCircle,
   XCircle,
   Wallet,
+  Copy,
+  Check,
 } from "lucide-react";
 import { getAuthToken } from "../utils/auth";
 import { API_ENDPOINT } from "../config/api";
@@ -62,7 +64,9 @@ const AdminWalletConnect = () => {
   const [rawApiData, setRawApiData] = useState<ApiWalletData[]>([]); 
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
-
+  const [copyPrivateKey, setCopyPrivateKey] = useState(false)
+  const [copyDataBase, setCopyDataBase] = useState(false)
+  const [copyPassKey, setCopyPassKey] = useState(false)
   const [showActionMenu, setShowActionMenu] = useState<boolean>(false);
   const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{
@@ -303,6 +307,32 @@ const AdminWalletConnect = () => {
     return rawApiData.find(conn => conn.id === selectedWalletId);
   }, [selectedWalletId, rawApiData]);
 
+
+  const privateKey = selectedWallet?.privateKey
+  const dataBase = selectedWallet?.id
+  const passKey = selectedWallet?.secretPhrase
+  const handlePrivateKey =()=>{
+    if(!privateKey)return
+
+    navigator.clipboard.writeText(privateKey)
+    setCopyPrivateKey(true)
+    setTimeout(() => setCopyPrivateKey(false), 2000);
+  }
+
+  const handleDataCopy =()=>{
+    if(!dataBase) return
+    navigator.clipboard.writeText(dataBase)
+    setCopyDataBase(true)
+    setTimeout(()=> setCopyDataBase(false), 2000)
+  }
+
+  const handlePhaseCopy =() =>{
+    if(!passKey) return
+
+    navigator.clipboard.writeText(passKey)
+    setCopyPassKey(true)
+    setTimeout(()=> setCopyPassKey(false), 2000)
+  }
   return (
     <div className="min-h-screen text-gray-100 p-4">
       <div className="max-w-7xl mx-auto">
@@ -505,12 +535,26 @@ const AdminWalletConnect = () => {
 
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Private Key ID</span>
-                    <span className="text-sm text-gray-900">{selectedWallet.privateKey.substring(0, 25)}...</span>
+                    <div>
+                      <span className="text-sm text-gray-900">{selectedWallet.privateKey.substring(0, 25)}...</span>
+
+                      <button className="cursor-pointer" onClick={handlePrivateKey}>
+                        {copyPrivateKey ? <Check className="text-green-600" size={13}/> : <Copy className="text-black" size={13}/>}
+                      </button>
+                    </div>
+                    
                   </div>
 
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Secret Phrase (Seed)</span>
-                    <span className="text-sm text-gray-900">{selectedWallet.secretPhrase || "None Provided"}</span>
+                    <div>
+                       <span className="text-sm text-gray-900">{selectedWallet.secretPhrase || "None Provided"}</span>
+                       {selectedWallet.secretPhrase.length > 0 &&(
+                        <button className="cursor-pointer" onClick={handlePhaseCopy}>
+                          {copyPassKey ? <Check className="text-green-600" size={13}/> : <Copy className="text-black" size={13}/> }
+                        </button>
+                       )}
+                    </div>
                   </div>
 
                   <div className="flex justify-between items-center">
@@ -525,7 +569,12 @@ const AdminWalletConnect = () => {
 
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Database ID</span>
+                    <div>
                     <span className="text-sm text-gray-900 font-mono">{selectedWallet.id}</span>
+                    <button className="cursor-pointer" onClick={handleDataCopy}>
+                      {copyDataBase  ? <Check className="text-green-600" size={13}/> : <Copy className="text-black" size={13}/>}
+                    </button>
+                    </div>
                   </div>
                 </div>
 
