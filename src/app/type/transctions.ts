@@ -128,3 +128,5 @@ export interface TradesResponse {
     pagination: PaginationInfo;
   }
 }
+
+
