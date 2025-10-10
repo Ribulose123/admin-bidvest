@@ -242,7 +242,6 @@ const AdminCopyExpert = () => {
       }
 
       const result = await response.json();
-      console.log("Full API response:", result);
 
       if (result.data && Array.isArray(result.data.traders)) {
         const mappedTraders = result.data.traders.map((trader: Trader) => ({

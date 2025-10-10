@@ -117,7 +117,6 @@ const CopyPerson = () => {
         minCopyAmount: updatedTrader.minCopyAmount,
         maxCopyAmount: updatedTrader.maxCopyAmount,
         tradingPairs: updatedTrader.tradingPairs,
-        badges: updatedTrader.badges,
       };
 
       const response = await fetch(API_ENDPOINT.TRADERS.EDIT_TRADERS.replace("{traderId}", updatedTrader.id), {

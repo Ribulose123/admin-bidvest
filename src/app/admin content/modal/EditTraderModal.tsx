@@ -9,7 +9,6 @@ interface EditTraderModalProps {
   trader: Trader | null;
   isOpen: boolean;
   onClose: () => void;
-  // FIXED: onSave now accepts both void or Promise<void>
   onSave: (trader: Trader) => void | Promise<void>; 
   isLoading: boolean;
 }
