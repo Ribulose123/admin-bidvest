@@ -366,11 +366,11 @@ const AdminUserManagement = () => {
     }
   };
 
- /*  const handleRejectKYC = () => {
+   const handleRejectKYC = () => {
     if (selectedUserForKYC) {
       updateKYCStatus(selectedUserForKYC.id, 'REJECTED');
     }
-  }; */
+  }; 
 
   const handleActionClick = useCallback(
     (userId: string, event: React.MouseEvent<HTMLButtonElement>) => {
@@ -733,6 +733,23 @@ const AdminUserManagement = () => {
                 
                 <div className="flex gap-4 w-full max-w-md">
                   
+                   <button
+                    onClick={handleRejectKYC}
+                    disabled={kycActionsLoading !== null}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center"
+                  >
+                    {kycActionsLoading === `REJECTED-${selectedUserForKYC.id}` ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Rejecting...
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="w-4 h-4 mr-2" />
+                        Reject KYC
+                      </>
+                    )}
+                  </button>
                   
                   <button
                     onClick={handleApproveKYC}

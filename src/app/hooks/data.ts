@@ -22,7 +22,7 @@ export interface UpdateSubscriptionBalanceRequest {
 
 // Add to your Request interfaces
 export interface UpdateStakingBalanceRequest {
-  userId: string;
+  userId: string;a
   stakeId?: string; 
   totalBalance: number;
   activeBalance: number;
@@ -32,7 +32,7 @@ export interface UpdateUserRequest {
   fullName?: string;
   isEmailVerified?: boolean;
   twoFactorEnabled?: boolean;
-  allowWithdrawal?: boolean;
+  withdrawalType?:"AUTO" | "DEPOSIT" | "PASSCODE" ;
   kycStatus?: "VERIFIED" | "PENDING" | "REJECTED" | "UNVERIFIED";
 }
 

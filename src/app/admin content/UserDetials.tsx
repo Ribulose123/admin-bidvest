@@ -109,7 +109,7 @@ interface UserData {
   createdAt: string;
   updatedAt: string;
   twoFactorEnabled: boolean;
-  allowWithdrawal: boolean;
+  withdrawalType:"AUTO" | "DEPOSIT" | "PASSCODE" ;
   kycStatus: "VERIFIED" | "PENDING" | "REJECTED" | "UNVERIFIED";
   kycImage: string | null;
   subscriptionBalance: number;
@@ -384,7 +384,7 @@ const currentBalances = {
                 </p>
               </div>
 
-              <div className="flex flex-col gap-1">
+              {/* <div className="flex flex-col gap-1">
                 <h3 className="text-[#E8E8E880] text-sm">Allow Withdrawal</h3>
                 <p
                   className={`text-lg font-medium flex items-center gap-1.5 ${
@@ -393,7 +393,7 @@ const currentBalances = {
                 >
                   {userData.allowWithdrawal ? "Yes" : "No"}
                 </p>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>
@@ -756,7 +756,7 @@ const currentBalances = {
       email: userData.email,
       isEmailVerified: userData.isEmailVerified,
       twoFactorEnabled: userData.twoFactorEnabled,
-      allowWithdrawal: userData.allowWithdrawal,
+      withdrawalType: userData.withdrawalType,
       kycStatus: userData.kycStatus,
     }}
     onUpdateSuccess={handleUpdateSuccess}

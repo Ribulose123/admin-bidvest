@@ -12,7 +12,7 @@ interface UpdateUserModalProps {
     email: string;
     isEmailVerified: boolean;
     twoFactorEnabled: boolean;
-    allowWithdrawal: boolean;
+    withdrawalType:"AUTO" | "DEPOSIT" | "PASSCODE" ;
     kycStatus: "VERIFIED" | "PENDING" | "REJECTED" | "UNVERIFIED";
   };
   onUpdateSuccess: () => void;
@@ -29,7 +29,7 @@ export const UpdateUserModal: React.FC<UpdateUserModalProps> = ({
     fullName: "",
     isEmailVerified: false,
     twoFactorEnabled: false,
-    allowWithdrawal: false,
+    withdrawalType: "AUTO" as "AUTO" | "DEPOSIT" | "PASSCODE" ,
     kycStatus: "UNVERIFIED" as "VERIFIED" | "PENDING" | "REJECTED" | "UNVERIFIED",
   });
   const [loading, setLoading] = useState(false);
@@ -41,7 +41,7 @@ export const UpdateUserModal: React.FC<UpdateUserModalProps> = ({
         fullName: currentUserData.fullName || "",
         isEmailVerified: currentUserData.isEmailVerified || false,
         twoFactorEnabled: currentUserData.twoFactorEnabled || false,
-        allowWithdrawal: currentUserData.allowWithdrawal || false,
+        withdrawalType: currentUserData.withdrawalType || "AUTO",
         kycStatus: currentUserData.kycStatus || "UNVERIFIED",
       });
       setError(null);
@@ -83,8 +83,8 @@ export const UpdateUserModal: React.FC<UpdateUserModalProps> = ({
       if (formData.twoFactorEnabled !== currentUserData.twoFactorEnabled) {
         updateData.twoFactorEnabled = formData.twoFactorEnabled;
       }
-      if (formData.allowWithdrawal !== currentUserData.allowWithdrawal) {
-        updateData.allowWithdrawal = formData.allowWithdrawal;
+      if (formData.withdrawalType !== currentUserData.withdrawalType) {
+        updateData.withdrawalType = formData.withdrawalType;
       }
       if (formData.kycStatus !== currentUserData.kycStatus) {
         updateData.kycStatus = formData.kycStatus;
@@ -150,6 +150,20 @@ export const UpdateUserModal: React.FC<UpdateUserModalProps> = ({
             </select>
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Withdrawal type</label>
+            <select
+              name="withdrawalType"
+              value={formData.withdrawalType}
+              onChange={handleInputChange}
+              className="w-full bg-[#0A0F1C] border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#F2AF29]"
+              >
+               <option value="AUTO">Auto</option>
+              <option value="DEPOSIT">Deposit</option>
+              <option value="PASSCODE">Passcode</option> 
+              </select>
+          </div>
+
           {/* Checkbox Fields */}
           <div className="space-y-3">
             <label className="flex items-center space-x-2">
@@ -174,16 +188,7 @@ export const UpdateUserModal: React.FC<UpdateUserModalProps> = ({
               <span className="text-sm text-gray-300">2FA Enabled</span>
             </label>
 
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                name="allowWithdrawal"
-                checked={formData.allowWithdrawal}
-                onChange={handleInputChange}
-                className="rounded bg-[#0A0F1C] border-gray-700 text-[#F2AF29] focus:ring-[#F2AF29]"
-              />
-              <span className="text-sm text-gray-300">Allow Withdrawal</span>
-            </label>
+
           </div>
 
           {error && (
