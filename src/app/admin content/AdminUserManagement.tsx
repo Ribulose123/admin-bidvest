@@ -16,6 +16,7 @@ import {
   XCircle,
   X,
   CheckCircle,
+  Image as ImageIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
@@ -86,7 +87,7 @@ const AdminUserManagement = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [prices, setPrices] = useState<CoinGeckoPrice>({}); // Added missing state
+  const [prices, setPrices] = useState<CoinGeckoPrice>({});
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showImageModal, setShowImageModal] = useState<boolean>(false);
   const [selectedUserForKYC, setSelectedUserForKYC] = useState<User | null>(null);
@@ -305,11 +306,13 @@ const AdminUserManagement = () => {
   };
 
   const handleImageClick = (user: User) => {
+    // Only open modal if there's an actual image
     if (user.kycImage) {
       setSelectedImage(user.kycImage);
       setSelectedUserForKYC(user);
       setShowImageModal(true);
     }
+    // If no image, do nothing (the placeholder will just show)
   };
 
   const handleApproveKYC = () => {
@@ -573,7 +576,12 @@ const AdminUserManagement = () => {
                           }}
                         />
                       ) : (
-                        <span className="text-gray-400">No Image</span>
+                        <div 
+                          className="w-12 h-12 rounded-md bg-gray-700 flex items-center justify-center cursor-not-allowed border border-gray-600"
+                          title="No KYC Image Available"
+                        >
+                          <ImageIcon className="w-6 h-6 text-gray-400" />
+                        </div>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -644,7 +652,7 @@ const AdminUserManagement = () => {
           )}
         </div>
 
-        {/* KYC Image Modal */}
+        {/* KYC Image Modal - Only shows when there's an actual image */}
         {showImageModal && selectedImage && selectedUserForKYC && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
             <div className="bg-[#1E293B] rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
