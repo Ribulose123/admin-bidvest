@@ -1,8 +1,8 @@
 "use client";
-import { CircleCheck, UploadIcon, Mail, ChevronDown } from "lucide-react";
+import { CircleCheck, UploadIcon, Mail, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import { useParams } from "next/navigation";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { API_ENDPOINT } from "../config/api";
 import { UpdateBalanceModal } from "./modal/UpdateBalanceModal";
 import { UpdateUserModal } from "./modal/UpdateUserModal";
@@ -113,8 +113,8 @@ interface UserData {
   kycStatus: "VERIFIED" | "PENDING" | "REJECTED" | "UNVERIFIED";
   kycImage: string | null;
   subscriptionBalance: number;
-  userStaking: StakingData[];
-  userSignal: SignalData[];
+  userStaking: StakingData | null;
+  userSignal: SignalData | null;
   copyStats: CopyStats | null;
   copyTradingStats: CopyTradingStats | null;
   statistics: Statistics;
@@ -132,6 +132,8 @@ const UserDetails = () => {
   const [exporting, setExporting] = useState(false);
   const [expanded, setExpanded] = useState(true);
   const [activeModal, setActiveModal] = useState<"asset" | "signal" | "subscription" | "staking" | 'user' | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+const [transactionsPerPage] = useState<number>(6);
 
   const fetchUserDetails = useCallback(async (abortController: AbortController) => {
     if (!id) return;
@@ -157,6 +159,8 @@ const UserDetails = () => {
       }
 
       const responseData = await response.json();
+      console.log('User staking data:', responseData.data.userStaking);
+    console.log('User signal data:', responseData.data.userSignal)
 
       if (!responseData.data) {
         throw new Error("No user data found in response");
@@ -203,8 +207,9 @@ const UserDetails = () => {
 
 
  const platformAssetId = userData?.userAssets?.[0]?.platformAssetId;
-const signalId = userData?.userSignal?.[0]?.id;
-const stakeId = userData?.userStaking?.[0]?.id
+const signalId = userData?.userSignal?.id;
+const stakeId = userData?.userStaking?.id
+// Fixed Current Balances calculation
 // Fixed Current Balances calculation
 const currentBalances = {
   asset: { 
@@ -212,15 +217,14 @@ const currentBalances = {
     platformAssetId: platformAssetId
   },
   signal: {
-    stakings: userData?.userSignal?.[0]?.stakings || 0,
-    strength: userData?.userSignal?.[0]?.strength || 0,
+    stakings: userData?.userSignal?.stakings || 0,
+    strength: userData?.userSignal?.strength || 0,
     signalId: signalId
   },
   subscription: { subscriptionBalance: userData?.subscriptionBalance || 0 },
-
-  staking:{
-    totalBalance: userData?.userStaking?.[0].totalBalance || 0,
-    activeBalance: userData?.userStaking?.[0].activeBalance || 0,
+  staking: {
+    totalBalance: userData?.userStaking?.totalBalance || 0,
+    activeBalance: userData?.userStaking?.activeBalance || 0,
     stakeId: stakeId
   }
 }
@@ -249,6 +253,40 @@ const currentBalances = {
     }).format(amount);
   };
 
+
+  const transactionsPagination = useMemo(()=>{
+    if(!userData) return {currentTransactions: [], totalPages:0}
+
+    const totalPages = Math.ceil(userData.transactions.length / transactionsPerPage)
+    const indexOfLastTransaction = currentPage * transactionsPerPage;
+    const indexOfFirstTranstion = indexOfLastTransaction - transactionsPerPage;
+
+    const currentTransactions = userData.transactions.slice(indexOfFirstTranstion, indexOfLastTransaction)
+
+    return {
+      currentTransactions,
+      totalPages,
+      currentPage,
+      hasNextPage: currentPage < totalPages,
+      hasPrevPage: currentPage > 1
+    }
+  },[userData, currentPage, transactionsPerPage])
+
+  const handleNextPage = ()=>{
+    if(transactionsPagination.hasNextPage){
+      setCurrentPage(prev=> prev + 1)
+    }
+  }
+
+  const handlePrevPage = () =>{
+    if(transactionsPagination.hasPrevPage){
+      setCurrentPage(prev => prev - 1)
+    }
+  }
+
+    const handlePageClick = useCallback((pageNumber: number) => {
+    setCurrentPage(pageNumber);
+  }, []);
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen text-gray-400">
@@ -578,7 +616,7 @@ const currentBalances = {
               </tr>
             </thead>
             <tbody>
-              {userData.transactions.map((transaction) => (
+              {transactionsPagination.currentTransactions.map((transaction) => (
                 <tr
                   key={transaction.id}
                   className="border-b border-[#141E32] hover:bg-[#10131F] transition-colors duration-150"
@@ -628,6 +666,52 @@ const currentBalances = {
               No transaction history found.
             </div>
           )}
+          {/* Pagination Controls */}
+        {userData && userData.transactions.length > transactionsPerPage && (
+          <div className="flex items-center justify-between mt-6 px-4">
+            <button
+              onClick={handlePrevPage}
+              disabled={!transactionsPagination.hasPrevPage}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                transactionsPagination.hasPrevPage
+                  ? "bg-[#F2AF29] hover:bg-[#e5a524] text-white cursor-pointer"
+                  : "bg-gray-600 text-gray-400 cursor-not-allowed"
+              }`}
+            >
+              <ChevronLeft size={16} />
+              Previous
+            </button>
+
+            <div className="flex items-center gap-2">
+              {Array.from({ length: transactionsPagination.totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => handlePageClick(page)}
+                  className={`w-8 h-8 rounded text-sm font-medium transition-colors ${
+                    currentPage === page
+                      ? "bg-[#01BC8D] text-white"
+                      : "bg-[#141E32] text-gray-300 hover:bg-[#2D3748]"
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={handleNextPage}
+              disabled={!transactionsPagination.hasNextPage}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                transactionsPagination.hasNextPage
+                  ? "bg-[#F2AF29] hover:bg-[#e5a524] text-white cursor-pointer"
+                  : "bg-gray-600 text-gray-400 cursor-not-allowed"
+              }`}
+            >
+              Next
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        )}
         </div>
       </div>
 

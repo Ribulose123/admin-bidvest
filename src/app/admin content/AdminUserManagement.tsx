@@ -52,6 +52,17 @@ interface User {
   status: "Active" | "Inactive" | "Suspended";
 }
 
+interface PaginationInfo {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
+
+
 const SYMBOL_TO_COINGECKO_ID: Record<string, string> = {
   BTC: "bitcoin",
   ETH: "ethereum",
@@ -96,6 +107,14 @@ const AdminUserManagement = () => {
   const [filterOutcome, setFilterOutcome] = useState<string>("All");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage] = useState<number>(14);
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 14,
+    hasNextPage: false,
+    hasPrevPage: false,
+  });
 
   const [showActionMenu, setShowActionMenu] = useState<boolean>(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -152,113 +171,139 @@ const AdminUserManagement = () => {
     return `${percentage.toFixed(2)}%`;
   }, []);
 
-  useEffect(() => {
-    const fetchAllUsers = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        if (typeof window === "undefined") return;
+  const fetchAllUsers = useCallback(async (page: number = 1, search: string = "", filter: string = "All") => {
+    setLoading(true);
+    setError(null);
+    try {
+      if (typeof window === "undefined") return;
 
-        const token = localStorage.getItem("authToken");
-        if (!token) throw new Error("No authentication token found");
+      const token = localStorage.getItem("authToken");
+      if (!token) throw new Error("No authentication token found");
 
-        const userResponse = await fetch(API_ENDPOINT.ADMIN.GET_ALL_USERS, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
+      // Build query parameters
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: itemsPerPage.toString(),
+      });
 
-        if (!userResponse.ok) {
-          throw new Error(`HTTP error! status: ${userResponse.status}`);
-        }
-
-        const userResponseData = await userResponse.json();
-        console.log('user data', userResponseData);
-        let fetchedUsers: User[] = [];
-        if (
-          userResponseData.data &&
-          Array.isArray(userResponseData.data.users)
-        ) {
-          fetchedUsers = userResponseData.data.users;
-        } else if (Array.isArray(userResponseData.data)) {
-          fetchedUsers = userResponseData.data;
-        } else if (Array.isArray(userResponseData)) {
-          fetchedUsers = userResponseData;
-        } else {
-          console.error(
-            "API response data is not an array at expected paths:",
-            userResponseData
-          );
-        }
-
-        setUsers(fetchedUsers);
-
-        if (fetchedUsers.length > 0) {
-          const fetchedPrices = await fetchPrices(fetchedUsers);
-          setPrices(fetchedPrices);
-        }
-      } catch (err) {
-        console.error("Error fetching user data:", err);
-        setError(
-          err instanceof Error
-            ? err.message
-            : "An error occurred while fetching user data"
-        );
-      } finally {
-        setLoading(false);
+      // Add search parameter if provided
+      if (search) {
+        params.append('search', search);
       }
-    };
 
-    fetchAllUsers();
-  }, []);
+      // Add status filter if not "All"
+      if (filter !== "All") {
+        params.append('status', filter);
+      }
+
+      const paginatedEndpoint = `${API_ENDPOINT.ADMIN.GET_ALL_USERS}?${params.toString()}`;
+      
+      const userResponse = await fetch(paginatedEndpoint, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!userResponse.ok) {
+        throw new Error(`HTTP error! status: ${userResponse.status}`);
+      }
+
+      const userResponseData = await userResponse.json();
+      console.log('API Response:', userResponseData);
+      
+      let fetchedUsers: User[] = [];
+      let paginationInfo: PaginationInfo = {
+        currentPage: page,
+        totalPages: 1,
+        totalItems: 0,
+        itemsPerPage: itemsPerPage,
+        hasNextPage: false,
+        hasPrevPage: false,
+      };
+
+      // Handle different response structures
+      if (userResponseData.data && userResponseData.data.users && userResponseData.data.pagination) {
+        // Structure: { data: { users: [], pagination: {} } }
+        fetchedUsers = userResponseData.data.users;
+        paginationInfo = { ...paginationInfo, ...userResponseData.data.pagination };
+      } else if (userResponseData.users && userResponseData.pagination) {
+        // Structure: { users: [], pagination: {} }
+        fetchedUsers = userResponseData.users;
+        paginationInfo = { ...paginationInfo, ...userResponseData.pagination };
+      } else if (Array.isArray(userResponseData.data)) {
+        // Fallback: array without pagination
+        fetchedUsers = userResponseData.data;
+        paginationInfo.totalItems = fetchedUsers.length;
+        paginationInfo.totalPages = Math.ceil(fetchedUsers.length / itemsPerPage);
+        paginationInfo.hasNextPage = page < paginationInfo.totalPages;
+        paginationInfo.hasPrevPage = page > 1;
+      } else if (Array.isArray(userResponseData)) {
+        // Fallback: direct array
+        fetchedUsers = userResponseData;
+        paginationInfo.totalItems = fetchedUsers.length;
+        paginationInfo.totalPages = Math.ceil(fetchedUsers.length / itemsPerPage);
+        paginationInfo.hasNextPage = page < paginationInfo.totalPages;
+        paginationInfo.hasPrevPage = page > 1;
+      } else {
+        console.error("Unexpected API response structure:", userResponseData);
+        throw new Error("Invalid API response structure");
+      }
+
+      setUsers(fetchedUsers);
+      setPagination(paginationInfo);
+
+      if (fetchedUsers.length > 0) {
+        const fetchedPrices = await fetchPrices(fetchedUsers);
+        setPrices(fetchedPrices);
+      }
+    } catch (err) {
+      console.error("Error fetching user data:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "An error occurred while fetching user data"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [itemsPerPage]);
+
+  // Initial fetch and when page changes
+  useEffect(() => {
+    fetchAllUsers(currentPage, searchTerm, filterOutcome);
+  }, [currentPage, filterOutcome, fetchAllUsers, searchTerm]);
+
+  // Handle search with debounce
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      setCurrentPage(1); // Reset to first page when searching
+      fetchAllUsers(1, searchTerm, filterOutcome);
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchTerm, filterOutcome, fetchAllUsers]);
 
   const usersWithCalculatedFields = useMemo(() => {
-  if (!Array.isArray(users)) return [];
-  return users.map((user) => {
-    const totalBalance = calculateTotalBalance(user, prices);
-    const signalStrength = calculateSignalStrength(user);
-    
-    return {
-      ...user,
-      displayBalance: `$${totalBalance.toFixed(2)}`,
-      signalStrength: signalStrength,
-      outcome: user.status === "Active" ? "Active" : "Inactive",
-    };
-  });
-}, [users, prices, calculateTotalBalance, calculateSignalStrength]);
-
-  const filteredUsers = useMemo(() => {
-    return usersWithCalculatedFields.filter((user) => {
-      const matchesSearch =
-        searchTerm === "" ||
-        user.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.joined.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.displayBalance.toLowerCase().includes(searchTerm.toLowerCase());
-
-      const matchesOutcome =
-        filterOutcome === "All" || user.outcome === filterOutcome;
-      return matchesSearch && matchesOutcome;
+    if (!Array.isArray(users)) return [];
+    return users.map((user) => {
+      const totalBalance = calculateTotalBalance(user, prices);
+      const signalStrength = calculateSignalStrength(user);
+      
+      return {
+        ...user,
+        displayBalance: `$${totalBalance.toFixed(2)}`,
+        signalStrength: signalStrength,
+        outcome: user.status === "Active" ? "Active" : "Inactive",
+      };
     });
-  }, [searchTerm, filterOutcome, usersWithCalculatedFields]);
+  }, [users, prices, calculateTotalBalance, calculateSignalStrength]);
 
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-
-  const currentUsers = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return filteredUsers.slice(startIndex, endIndex);
-  }, [currentPage, filteredUsers, itemsPerPage]);
-
-  const handlePageChange = useCallback(
-    (page: number) => {
-      if (page >= 1 && page <= totalPages) {
-        setCurrentPage(page);
-      }
-    },
-    [totalPages]
-  );
+  const handlePageChange = useCallback((page: number) => {
+    if (page >= 1 && page <= pagination.totalPages) {
+      setCurrentPage(page);
+    }
+  }, [pagination.totalPages]);
 
   const handNavigation = useCallback(
     (id: string) => {
@@ -321,11 +366,11 @@ const AdminUserManagement = () => {
     }
   };
 
-  const handleRejectKYC = () => {
+ /*  const handleRejectKYC = () => {
     if (selectedUserForKYC) {
       updateKYCStatus(selectedUserForKYC.id, 'REJECTED');
     }
-  };
+  }; */
 
   const handleActionClick = useCallback(
     (userId: string, event: React.MouseEvent<HTMLButtonElement>) => {
@@ -402,8 +447,8 @@ const AdminUserManagement = () => {
   const renderPaginationButtons = useCallback(() => {
     const pagesToShow = 7;
     const buttons = [];
-    const startPage = Math.max(1, currentPage - Math.floor(pagesToShow / 2));
-    const endPage = Math.min(totalPages, startPage + pagesToShow - 1);
+    const startPage = Math.max(1, pagination.currentPage - Math.floor(pagesToShow / 2));
+    const endPage = Math.min(pagination.totalPages, startPage + pagesToShow - 1);
 
     if (startPage > 1) {
       buttons.push(
@@ -430,7 +475,7 @@ const AdminUserManagement = () => {
           key={i}
           onClick={() => handlePageChange(i)}
           className={`px-3 py-1 rounded-md text-[#7D8491DE] ${
-            currentPage === i ? "bg-[#7D849114] e" : "hover:bg-gray-700"
+            pagination.currentPage === i ? "bg-[#7D849114] e" : "hover:bg-gray-700"
           }`}
         >
           {i}
@@ -438,8 +483,8 @@ const AdminUserManagement = () => {
       );
     }
 
-    if (endPage < totalPages) {
-      if (endPage < totalPages - 1) {
+    if (endPage < pagination.totalPages) {
+      if (endPage < pagination.totalPages - 1) {
         buttons.push(
           <span key="dots-end" className="px-3 py-1 text-gray-400">
             ...
@@ -448,17 +493,17 @@ const AdminUserManagement = () => {
       }
       buttons.push(
         <button
-          key={totalPages}
-          onClick={() => handlePageChange(totalPages)}
+          key={pagination.totalPages}
+          onClick={() => handlePageChange(pagination.totalPages)}
           className="px-3 py-1 rounded-md hover:bg-gray-700"
         >
-          {totalPages}
+          {pagination.totalPages}
         </button>
       );
     }
 
     return buttons;
-  }, [currentPage, totalPages, handlePageChange]);
+  }, [pagination.currentPage, pagination.totalPages, handlePageChange]);
 
   if (loading) {
     return (
@@ -485,7 +530,7 @@ const AdminUserManagement = () => {
     <div className="min-h-screen text-gray-100 p-8 font-inter">
       <div className="max-w-full mx-auto">
         <h1 className="text-2xl font-semibold mb-6">
-          Users ({filteredUsers.length})
+          Users ({pagination.totalItems})
         </h1>
 
         <div className="flex flex-col md:flex-row items-center justify-between p-4 rounded-lg shadow-lg mb-6 bg-[#060A17] border border-gray-800">
@@ -493,7 +538,7 @@ const AdminUserManagement = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Search..."
+              placeholder="Search by ID, email, or date..."
               className="w-full pl-10 pr-4 py-2 rounded-lg bg-[#10131F] focus:outline-none focus:ring-2 focus:ring-[#F2AF29] text-white placeholder-gray-400"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -549,8 +594,8 @@ const AdminUserManagement = () => {
               </tr>
             </thead>
             <tbody className="bg-[#10131F] divide-y divide-gray-800">
-              {currentUsers.length > 0 ? (
-                currentUsers.map((user) => (
+              {usersWithCalculatedFields.length > 0 ? (
+                usersWithCalculatedFields.map((user) => (
                   <tr
                     key={user.id}
                     className="hover:bg-gray-700 transition-colors duration-200 cursor-pointer"
@@ -614,7 +659,7 @@ const AdminUserManagement = () => {
               ) : (
                 <tr>
                   <td colSpan={9} className="px-6 py-8 text-center text-gray-400">
-                    No users match your criteria.
+                    No users found.
                   </td>
                 </tr>
               )}
@@ -655,7 +700,7 @@ const AdminUserManagement = () => {
         {/* KYC Image Modal - Only shows when there's an actual image */}
         {showImageModal && selectedImage && selectedUserForKYC && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-[#1E293B] rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="bg-[#1E293B] rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6 border-b border-gray-700 flex justify-between items-center">
                 <div>
                   <h3 className="text-xl font-semibold">KYC Document Verification</h3>
@@ -687,23 +732,7 @@ const AdminUserManagement = () => {
                 </div>
                 
                 <div className="flex gap-4 w-full max-w-md">
-                  <button
-                    onClick={handleRejectKYC}
-                    disabled={kycActionsLoading !== null}
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center"
-                  >
-                    {kycActionsLoading === `REJECTED-${selectedUserForKYC.id}` ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Rejecting...
-                      </>
-                    ) : (
-                      <>
-                        <XCircle className="w-4 h-4 mr-2" />
-                        Reject KYC
-                      </>
-                    )}
-                  </button>
+                  
                   
                   <button
                     onClick={handleApproveKYC}
@@ -743,28 +772,28 @@ const AdminUserManagement = () => {
 
         <div className="flex flex-col md:flex-row items-center justify-between mt-6 text-sm text-gray-300">
           <div className="mb-4 md:mb-0">
-            {filteredUsers.length > 0 ? (
+            {pagination.totalItems > 0 ? (
               <span>
-                {(currentPage - 1) * itemsPerPage + 1} -{" "}
-                {Math.min(currentPage * itemsPerPage, filteredUsers.length)} of{" "}
-                {filteredUsers.length} users
+                {(pagination.currentPage - 1) * pagination.itemsPerPage + 1} -{" "}
+                {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} of{" "}
+                {pagination.totalItems} users
               </span>
             ) : (
-              <span>0 - 0 of 0 users</span>
+              <span>0 users</span>
             )}
           </div>
           <div className="flex items-center space-x-2">
             <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
+              onClick={() => handlePageChange(pagination.currentPage - 1)}
+              disabled={!pagination.hasPrevPage}
               className="px-3 py-1 rounded-md hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <div className="flex space-x-1">{renderPaginationButtons()}</div>
             <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
+              onClick={() => handlePageChange(pagination.currentPage + 1)}
+              disabled={!pagination.hasNextPage}
               className="px-3 py-1 rounded-md hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ChevronRight className="w-4 h-4" />
