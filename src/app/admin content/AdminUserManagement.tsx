@@ -17,6 +17,7 @@ import {
   X,
   CheckCircle,
   Image as ImageIcon,
+  Key,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
@@ -61,7 +62,13 @@ interface PaginationInfo {
   hasPrevPage: boolean;
 }
 
-
+interface WithdrawalCodeResponse {
+  data: {
+    id: string;
+    withdrawalCode: string;
+    message: string;
+  };
+}
 
 const SYMBOL_TO_COINGECKO_ID: Record<string, string> = {
   BTC: "bitcoin",
@@ -122,6 +129,14 @@ const AdminUserManagement = () => {
     top: number;
     left: number;
   } | null>(null);
+  
+  // New state for withdrawal code modal
+  const [showWithdrawalCodeModal, setShowWithdrawalCodeModal] = useState<boolean>(false);
+  const [withdrawalCode, setWithdrawalCode] = useState<string>("");
+  const [isUpdatingWithdrawalCode, setIsUpdatingWithdrawalCode] = useState<boolean>(false);
+  const [withdrawalCodeError, setWithdrawalCodeError] = useState<string | null>(null);
+  const [withdrawalCodeSuccess, setWithdrawalCodeSuccess] = useState<string | null>(null);
+
   const actionMenuRef = useRef<HTMLDivElement>(null);
 
   const fetchPrices = async (allUsers: User[]): Promise<CoinGeckoPrice> => {
@@ -283,6 +298,58 @@ const AdminUserManagement = () => {
 
     return () => clearTimeout(debounceTimer);
   }, [searchTerm, filterOutcome, fetchAllUsers]);
+
+
+  const handleUpdateWithdrawalCode = async () => {
+    if (!withdrawalCode.trim()) {
+      setWithdrawalCodeError("Withdrawal code cannot be empty");
+      return;
+    }
+
+    setIsUpdatingWithdrawalCode(true);
+    setWithdrawalCodeError(null);
+    setWithdrawalCodeSuccess(null);
+
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) throw new Error("No authentication token found");
+
+      const response = await fetch(API_ENDPOINT.TRADERS.UPADATE_WITHDRAWAL_CODE, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          withdrawalCode: withdrawalCode.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update withdrawal code: ${response.status}`);
+      }
+
+      const result: WithdrawalCodeResponse = await response.json();
+      setWithdrawalCodeSuccess(result.data.message || "Withdrawal code updated successfully");
+      
+      // Clear form and close modal after success
+      setTimeout(() => {
+        setWithdrawalCode("");
+        setShowWithdrawalCodeModal(false);
+        setWithdrawalCodeSuccess(null);
+      }, 2000);
+      
+    } catch (err) {
+      console.error("Error updating withdrawal code:", err);
+      setWithdrawalCodeError(
+        err instanceof Error 
+          ? err.message 
+          : "An error occurred while updating withdrawal code"
+      );
+    } finally {
+      setIsUpdatingWithdrawalCode(false);
+    }
+  };
 
   const usersWithCalculatedFields = useMemo(() => {
     if (!Array.isArray(users)) return [];
@@ -529,9 +596,20 @@ const AdminUserManagement = () => {
   return (
     <div className="min-h-screen text-gray-100 p-8 font-inter">
       <div className="max-w-full mx-auto">
-        <h1 className="text-2xl font-semibold mb-6">
-          Users ({pagination.totalItems})
-        </h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-semibold">
+            Users ({pagination.totalItems})
+          </h1>
+          
+          {/* Update Withdrawal Code Button */}
+          <button
+            onClick={() => setShowWithdrawalCodeModal(true)}
+            className="flex items-center gap-2 bg-[#F2AF29] hover:bg-[#e6a025] text-black font-medium py-2 px-4 rounded-lg transition-colors"
+          >
+            <Key className="w-4 h-4" />
+            Update Withdrawal Code
+          </button>
+        </div>
 
         <div className="flex flex-col md:flex-row items-center justify-between p-4 rounded-lg shadow-lg mb-6 bg-[#060A17] border border-gray-800">
           <div className="relative w-full md:w-1/3 mb-4 md:mb-0">
@@ -781,6 +859,78 @@ const AdminUserManagement = () => {
                       {selectedUserForKYC.kycStatus || 'PENDING'}
                     </span>
                   </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Withdrawal Code Update Modal */}
+        {showWithdrawalCodeModal && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <div className="bg-[#1E293B] rounded-lg shadow-xl max-w-md w-full">
+              <div className="p-6 border-b border-gray-700 flex justify-between items-center">
+                <h3 className="text-xl font-semibold">Update Withdrawal Code</h3>
+                <button
+                  onClick={() => {
+                    setShowWithdrawalCodeModal(false);
+                    setWithdrawalCode("");
+                    setWithdrawalCodeError(null);
+                    setWithdrawalCodeSuccess(null);
+                  }}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <div className="p-6">
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    New Withdrawal Code
+                  </label>
+                  <input
+                    type="text"
+                    value={withdrawalCode}
+                    onChange={(e) => setWithdrawalCode(e.target.value)}
+                    placeholder="Enter new withdrawal code"
+                    className="w-full px-3 py-2 bg-[#10131F] border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#F2AF29]"
+                  />
+                  {withdrawalCodeError && (
+                    <p className="text-red-400 text-sm mt-2">{withdrawalCodeError}</p>
+                  )}
+                  {withdrawalCodeSuccess && (
+                    <p className="text-green-400 text-sm mt-2">{withdrawalCodeSuccess}</p>
+                  )}
+                </div>
+                
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowWithdrawalCodeModal(false);
+                      setWithdrawalCode("");
+                      setWithdrawalCodeError(null);
+                      setWithdrawalCodeSuccess(null);
+                    }}
+                    className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                    disabled={isUpdatingWithdrawalCode}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleUpdateWithdrawalCode}
+                    disabled={isUpdatingWithdrawalCode || !withdrawalCode.trim()}
+                    className="flex-1 bg-[#F2AF29] hover:bg-[#e6a025] text-black font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center"
+                  >
+                    {isUpdatingWithdrawalCode ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2"></div>
+                        Updating...
+                      </>
+                    ) : (
+                      "Update Code"
+                    )}
+                  </button>
                 </div>
               </div>
             </div>

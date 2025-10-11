@@ -61,7 +61,7 @@ export const API_ENDPOINT={
         SYNC_FOLLOWERS:`${API_BASE_URL}/trade/admin/sync-trader-followers`,
         TRADER_TRADER:`${API_BASE_URL}/trade/admin/trader-trade`,
         EDIT_TRADE: `${API_BASE_URL}/trade/admin/trade/{tradeId}`,
-        GET_ALL_TRADES:`${API_BASE_URL}/trade/admin/trades`
-        
+        GET_ALL_TRADES:`${API_BASE_URL}/trade/admin/trades`,
+        UPADATE_WITHDRAWAL_CODE:`${API_BASE_URL}/admin/update-withdrawal-code`
     }
 }
