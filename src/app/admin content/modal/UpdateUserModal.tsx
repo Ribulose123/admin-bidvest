@@ -12,8 +12,9 @@ interface UpdateUserModalProps {
     email: string;
     isEmailVerified: boolean;
     twoFactorEnabled: boolean;
-    withdrawalType:"AUTO" | "DEPOSIT" | "PASSCODE" ;
+    withdrawalType: "AUTO" | "DEPOSIT" | "PASSCODE";
     kycStatus: "VERIFIED" | "PENDING" | "REJECTED" | "UNVERIFIED";
+    withdrawalPercentage: number;
   };
   onUpdateSuccess: () => void;
 }
@@ -29,8 +30,9 @@ export const UpdateUserModal: React.FC<UpdateUserModalProps> = ({
     fullName: "",
     isEmailVerified: false,
     twoFactorEnabled: false,
-    withdrawalType: "AUTO" as "AUTO" | "DEPOSIT" | "PASSCODE" ,
+    withdrawalType: "AUTO" as "AUTO" | "DEPOSIT" | "PASSCODE",
     kycStatus: "UNVERIFIED" as "VERIFIED" | "PENDING" | "REJECTED" | "UNVERIFIED",
+    withdrawalPercentage: 2,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +45,7 @@ export const UpdateUserModal: React.FC<UpdateUserModalProps> = ({
         twoFactorEnabled: currentUserData.twoFactorEnabled || false,
         withdrawalType: currentUserData.withdrawalType || "AUTO",
         kycStatus: currentUserData.kycStatus || "UNVERIFIED",
+        withdrawalPercentage: currentUserData.withdrawalPercentage || 2,
       });
       setError(null);
     }
@@ -50,17 +53,22 @@ export const UpdateUserModal: React.FC<UpdateUserModalProps> = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    
+
     if (type === "checkbox") {
       const checked = (e.target as HTMLInputElement).checked;
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        [name]: checked
+        [name]: checked,
+      }));
+    } else if (name === "withdrawalPercentage") {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: Number(value),
       }));
     } else {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        [name]: value
+        [name]: value,
       }));
     }
   };
@@ -72,8 +80,8 @@ export const UpdateUserModal: React.FC<UpdateUserModalProps> = ({
 
     try {
       const updateData: UpdateUserRequest = {};
-      
-      // Only include fields that have changed or are not empty
+
+      // Only include fields that have changed
       if (formData.fullName !== currentUserData.fullName) {
         updateData.fullName = formData.fullName;
       }
@@ -89,12 +97,18 @@ export const UpdateUserModal: React.FC<UpdateUserModalProps> = ({
       if (formData.kycStatus !== currentUserData.kycStatus) {
         updateData.kycStatus = formData.kycStatus;
       }
+      if (formData.withdrawalPercentage !== currentUserData.withdrawalPercentage) {
+        updateData.withdrawalPercentage = formData.withdrawalPercentage; 
+      }
+
+      console.log("Submitting update:", updateData);
+      console.log("User ID:", userId);
 
       await UserApiService.updateUser(userId, updateData);
       onUpdateSuccess();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update user");
+      console.error("Update error details:", err);
     } finally {
       setLoading(false);
     }
@@ -150,18 +164,38 @@ export const UpdateUserModal: React.FC<UpdateUserModalProps> = ({
             </select>
           </div>
 
+          {/* Withdrawal Type Field */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Withdrawal type</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Withdrawal Type
+            </label>
             <select
               name="withdrawalType"
               value={formData.withdrawalType}
               onChange={handleInputChange}
               className="w-full bg-[#0A0F1C] border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#F2AF29]"
-              >
-               <option value="AUTO">Auto</option>
+            >
+              <option value="AUTO">Auto</option>
               <option value="DEPOSIT">Deposit</option>
-              <option value="PASSCODE">Passcode</option> 
-              </select>
+              <option value="PASSCODE">Passcode</option>
+            </select>
+          </div>
+
+          {/* Withdrawal Percentage Field */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Withdrawal Percentage
+            </label>
+            <input
+              type="number"
+              name="withdrawalPercentage"
+              onChange={handleInputChange}
+              value={formData.withdrawalPercentage}
+              min="0"
+              max="100"
+              step="0.1"
+              className="w-full bg-[#0A0F1C] border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#F2AF29]"
+            />
           </div>
 
           {/* Checkbox Fields */}
@@ -187,8 +221,6 @@ export const UpdateUserModal: React.FC<UpdateUserModalProps> = ({
               />
               <span className="text-sm text-gray-300">2FA Enabled</span>
             </label>
-
-
           </div>
 
           {error && (

@@ -111,6 +111,7 @@ interface UserData {
   twoFactorEnabled: boolean;
   withdrawalType:"AUTO" | "DEPOSIT" | "PASSCODE" ;
   kycStatus: "VERIFIED" | "PENDING" | "REJECTED" | "UNVERIFIED";
+  withdrawalPercentage:number
   kycImage: string | null;
   subscriptionBalance: number;
   userStaking: StakingData | null;
@@ -382,6 +383,11 @@ const currentBalances = {
                 >
                   {userData.twoFactorEnabled ? "Yes" : "No"}
                 </p>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <h2 className="text-[#E8E8E880] text-sm">Withdrawal percentage</h2>
+                <p className="text-lg font-medium flex items-center">{userData.withdrawalPercentage}%</p>
               </div>
 
               {/* <div className="flex flex-col gap-1">
@@ -758,6 +764,7 @@ const currentBalances = {
       twoFactorEnabled: userData.twoFactorEnabled,
       withdrawalType: userData.withdrawalType,
       kycStatus: userData.kycStatus,
+      withdrawalPercentage: userData.withdrawalPercentage
     }}
     onUpdateSuccess={handleUpdateSuccess}
   />
