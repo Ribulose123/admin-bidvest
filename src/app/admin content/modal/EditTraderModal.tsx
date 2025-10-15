@@ -4,7 +4,6 @@ import { X, Upload, Camera } from 'lucide-react';
 import Image from 'next/image';
 import { Trader } from '@/app/type/trader'; 
 
-
 interface EditTraderModalProps {
   trader: Trader | null;
   isOpen: boolean;
@@ -25,6 +24,26 @@ interface FormData {
   minCopyAmount: string;
   maxCopyAmount: string;
   tradingPairs: string;
+  
+  // New performance fields
+  roiPercent: string;
+  totalReturn: string;
+  winRate: string;
+  avgWinAmount: string;
+  avgLossAmount: string;
+  maxDrawdown: string;
+  sharpeRatio: string;
+  totalTrades: string;
+  winningTrades: string;
+  losingTrades: string;
+  profitFactor: string;
+  
+  // New social metrics fields
+  views: string;
+  likes: string;
+  comments: string;
+  shares: string;
+  subscribers: string;
 }
 
 const EditTraderModal: React.FC<EditTraderModalProps> = ({ 
@@ -46,6 +65,26 @@ const EditTraderModal: React.FC<EditTraderModalProps> = ({
     minCopyAmount: '',
     maxCopyAmount: '',
     tradingPairs: '',
+    
+    // New performance fields
+    roiPercent: '',
+    totalReturn: '',
+    winRate: '',
+    avgWinAmount: '',
+    avgLossAmount: '',
+    maxDrawdown: '',
+    sharpeRatio: '',
+    totalTrades: '',
+    winningTrades: '',
+    losingTrades: '',
+    profitFactor: '',
+    
+    // New social metrics fields
+    views: '',
+    likes: '',
+    comments: '',
+    shares: '',
+    subscribers: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -67,6 +106,26 @@ const EditTraderModal: React.FC<EditTraderModalProps> = ({
         minCopyAmount: trader.minCopyAmount.toString(),
         maxCopyAmount: trader.maxCopyAmount?.toString() || '',
         tradingPairs: trader.tradingPairs.join(', '),
+        
+        // New performance fields
+        roiPercent: (trader.roiPercent || 0).toString(),
+        totalReturn: (trader.totalReturn || 0).toString(),
+        winRate: (trader.winRate || 0).toString(),
+        avgWinAmount: (trader.avgWinAmount || 0).toString(),
+        avgLossAmount: (trader.avgLossAmount || 0).toString(),
+        maxDrawdown: (trader.maxDrawdown || 0).toString(),
+        sharpeRatio: (trader.sharpeRatio || 0).toString(),
+        totalTrades: (trader.totalTrades || 0).toString(),
+        winningTrades: (trader.winningTrades || 0).toString(),
+        losingTrades: (trader.losingTrades || 0).toString(),
+        profitFactor: (trader.profitFactor || 0).toString(),
+        
+        // New social metrics fields
+        views: (trader.views || 0).toString(),
+        likes: (trader.likes || 0).toString(),
+        comments: (trader.comments || 0).toString(),
+        shares: (trader.shares || 0).toString(),
+        subscribers: (trader.subscribers || 0).toString(),
       });
     }
   }, [trader]);
@@ -112,6 +171,20 @@ const EditTraderModal: React.FC<EditTraderModalProps> = ({
       newErrors.maxCopyAmount = 'Max Copy Amount must be a positive number.';
     }
 
+    // Validate new numeric fields
+    const numericFields = [
+      'roiPercent', 'totalReturn', 'winRate', 'avgWinAmount', 'avgLossAmount',
+      'maxDrawdown', 'sharpeRatio', 'totalTrades', 'winningTrades', 'losingTrades',
+      'profitFactor', 'views', 'likes', 'comments', 'shares', 'subscribers'
+    ];
+
+    numericFields.forEach(field => {
+      const value = formData[field as keyof FormData];
+      if (value && isNaN(Number(value))) {
+        newErrors[field] = `${field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())} must be a valid number.`;
+      }
+    });
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -155,7 +228,28 @@ const EditTraderModal: React.FC<EditTraderModalProps> = ({
       minCopyAmount: Number(formData.minCopyAmount) || 0,
       maxCopyAmount: formData.maxCopyAmount ? Number(formData.maxCopyAmount) : undefined,
       tradingPairs: formData.tradingPairs.split(',').map(pair => pair.trim()).filter(Boolean),
-      updatedAt: new Date().toISOString(),
+      
+      // New performance fields
+      roiPercent: Number(formData.roiPercent) || 0,
+      totalReturn: Number(formData.totalReturn) || 0,
+      winRate: Number(formData.winRate) || 0,
+      avgWinAmount: Number(formData.avgWinAmount) || 0,
+      avgLossAmount: Number(formData.avgLossAmount) || 0,
+      maxDrawdown: Number(formData.maxDrawdown) || 0,
+      sharpeRatio: Number(formData.sharpeRatio) || 0,
+      totalTrades: Number(formData.totalTrades) || 0,
+      winningTrades: Number(formData.winningTrades) || 0,
+      losingTrades: Number(formData.losingTrades) || 0,
+      profitFactor: Number(formData.profitFactor) || 0,
+      
+      // New social metrics fields
+      views: Number(formData.views) || 0,
+      likes: Number(formData.likes) || 0,
+      comments: Number(formData.comments) || 0,
+      shares: Number(formData.shares) || 0,
+      subscribers: Number(formData.subscribers) || 0,
+      
+      updatedAt: new Date(),
     };
 
     try {
@@ -214,6 +308,26 @@ const EditTraderModal: React.FC<EditTraderModalProps> = ({
         minCopyAmount: trader.minCopyAmount.toString(),
         maxCopyAmount: trader.maxCopyAmount?.toString() || '',
         tradingPairs: trader.tradingPairs.join(', '),
+        
+        // New performance fields
+        roiPercent: (trader.roiPercent || 0).toString(),
+        totalReturn: (trader.totalReturn || 0).toString(),
+        winRate: (trader.winRate || 0).toString(),
+        avgWinAmount: (trader.avgWinAmount || 0).toString(),
+        avgLossAmount: (trader.avgLossAmount || 0).toString(),
+        maxDrawdown: (trader.maxDrawdown || 0).toString(),
+        sharpeRatio: (trader.sharpeRatio || 0).toString(),
+        totalTrades: (trader.totalTrades || 0).toString(),
+        winningTrades: (trader.winningTrades || 0).toString(),
+        losingTrades: (trader.losingTrades || 0).toString(),
+        profitFactor: (trader.profitFactor || 0).toString(),
+        
+        // New social metrics fields
+        views: (trader.views || 0).toString(),
+        likes: (trader.likes || 0).toString(),
+        comments: (trader.comments || 0).toString(),
+        shares: (trader.shares || 0).toString(),
+        subscribers: (trader.subscribers || 0).toString(),
       });
     }
     setErrors({});
@@ -225,7 +339,7 @@ const EditTraderModal: React.FC<EditTraderModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="bg-[#141E32] border border-[#1E2A4A] rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+      <div className="bg-[#141E32] border border-[#1E2A4A] rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center p-6 border-b border-[#1E2A4A] sticky top-0 bg-[#141E32] z-10">
           <h3 className="text-white font-semibold text-lg">Edit Trader</h3>
           <button 
@@ -482,6 +596,205 @@ const EditTraderModal: React.FC<EditTraderModalProps> = ({
             {errors.tradingPairs && (
               <p className="mt-1 text-sm text-red-500">{errors.tradingPairs}</p>
             )}
+          </div>
+
+          {/* Performance Metrics Section */}
+          <div className="border-t border-[#1E2A4A] pt-4">
+            <h4 className="text-white font-medium mb-4">Performance Metrics</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">ROI %</label>
+                <input
+                  type="number"
+                  name="roiPercent"
+                  value={formData.roiPercent}
+                  onChange={handleInputChange}
+                  step="0.1"
+                  className="w-full bg-[#1E2A4A]/50 border border-[#2A3A5F] rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#F2AF29]"
+                  disabled={isLoading}
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Total Return</label>
+                <input
+                  type="number"
+                  name="totalReturn"
+                  value={formData.totalReturn}
+                  onChange={handleInputChange}
+                  step="0.1"
+                  className="w-full bg-[#1E2A4A]/50 border border-[#2A3A5F] rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#F2AF29]"
+                  disabled={isLoading}
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Win Rate %</label>
+                <input
+                  type="number"
+                  name="winRate"
+                  value={formData.winRate}
+                  onChange={handleInputChange}
+                  step="0.1"
+                  max="100"
+                  className="w-full bg-[#1E2A4A]/50 border border-[#2A3A5F] rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#F2AF29]"
+                  disabled={isLoading}
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Sharpe Ratio</label>
+                <input
+                  type="number"
+                  name="sharpeRatio"
+                  value={formData.sharpeRatio}
+                  onChange={handleInputChange}
+                  step="0.1"
+                  className="w-full bg-[#1E2A4A]/50 border border-[#2A3A5F] rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#F2AF29]"
+                  disabled={isLoading}
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Avg Win Amount</label>
+                <input
+                  type="number"
+                  name="avgWinAmount"
+                  value={formData.avgWinAmount}
+                  onChange={handleInputChange}
+                  step="0.01"
+                  className="w-full bg-[#1E2A4A]/50 border border-[#2A3A5F] rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#F2AF29]"
+                  disabled={isLoading}
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Avg Loss Amount</label>
+                <input
+                  type="number"
+                  name="avgLossAmount"
+                  value={formData.avgLossAmount}
+                  onChange={handleInputChange}
+                  step="0.01"
+                  className="w-full bg-[#1E2A4A]/50 border border-[#2A3A5F] rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#F2AF29]"
+                  disabled={isLoading}
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Max Drawdown %</label>
+                <input
+                  type="number"
+                  name="maxDrawdown"
+                  value={formData.maxDrawdown}
+                  onChange={handleInputChange}
+                  step="0.1"
+                  className="w-full bg-[#1E2A4A]/50 border border-[#2A3A5F] rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#F2AF29]"
+                  disabled={isLoading}
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Profit Factor</label>
+                <input
+                  type="number"
+                  name="profitFactor"
+                  value={formData.profitFactor}
+                  onChange={handleInputChange}
+                  step="0.1"
+                  className="w-full bg-[#1E2A4A]/50 border border-[#2A3A5F] rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#F2AF29]"
+                  disabled={isLoading}
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Total Trades</label>
+                <input
+                  type="number"
+                  name="totalTrades"
+                  value={formData.totalTrades}
+                  onChange={handleInputChange}
+                  className="w-full bg-[#1E2A4A]/50 border border-[#2A3A5F] rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#F2AF29]"
+                  disabled={isLoading}
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Winning Trades</label>
+                <input
+                  type="number"
+                  name="winningTrades"
+                  value={formData.winningTrades}
+                  onChange={handleInputChange}
+                  className="w-full bg-[#1E2A4A]/50 border border-[#2A3A5F] rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#F2AF29]"
+                  disabled={isLoading}
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Losing Trades</label>
+                <input
+                  type="number"
+                  name="losingTrades"
+                  value={formData.losingTrades}
+                  onChange={handleInputChange}
+                  className="w-full bg-[#1E2A4A]/50 border border-[#2A3A5F] rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#F2AF29]"
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Social Metrics Section */}
+          <div className="border-t border-[#1E2A4A] pt-4">
+            <h4 className="text-white font-medium mb-4">Social Metrics</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Views</label>
+                <input
+                  type="number"
+                  name="views"
+                  value={formData.views}
+                  onChange={handleInputChange}
+                  className="w-full bg-[#1E2A4A]/50 border border-[#2A3A5F] rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#F2AF29]"
+                  disabled={isLoading}
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Likes</label>
+                <input
+                  type="number"
+                  name="likes"
+                  value={formData.likes}
+                  onChange={handleInputChange}
+                  className="w-full bg-[#1E2A4A]/50 border border-[#2A3A5F] rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#F2AF29]"
+                  disabled={isLoading}
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Comments</label>
+                <input
+                  type="number"
+                  name="comments"
+                  value={formData.comments}
+                  onChange={handleInputChange}
+                  className="w-full bg-[#1E2A4A]/50 border border-[#2A3A5F] rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#F2AF29]"
+                  disabled={isLoading}
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Shares</label>
+                <input
+                  type="number"
+                  name="shares"
+                  value={formData.shares}
+                  onChange={handleInputChange}
+                  className="w-full bg-[#1E2A4A]/50 border border-[#2A3A5F] rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#F2AF29]"
+                  disabled={isLoading}
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Subscribers</label>
+                <input
+                  type="number"
+                  name="subscribers"
+                  value={formData.subscribers}
+                  onChange={handleInputChange}
+                  className="w-full bg-[#1E2A4A]/50 border border-[#2A3A5F] rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#F2AF29]"
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
           </div>
           
           {/* Checkboxes */}

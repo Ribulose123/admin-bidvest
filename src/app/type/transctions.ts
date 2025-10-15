@@ -130,3 +130,160 @@ export interface TradesResponse {
 }
 
 
+// In your types/transctions.ts file, add:
+// Add to your types/transctions.ts file
+export interface SyncParams {
+  traderId: string;
+  maxChangePercent: number;
+  incrementProbability: number;
+  syncFields?: string[];
+}
+
+export interface SyncResponse {
+  status: number;
+  message: string;
+  data: {
+    traderId: string;
+    updatedStats: {
+      currentCopiers: {
+        previous: number;
+        new: number;
+        change: number;
+        changeType: "INCREMENT" | "DECREMENT" | "NO_CHANGE";
+      };
+      totalCopiers: {
+        previous: number;
+        new: number;
+        change: number;
+        changeType: "INCREMENT" | "DECREMENT" | "NO_CHANGE";
+      };
+      totalPnL: {
+        previous: number;
+        new: number;
+        change: number;
+        changeType: "INCREMENT" | "DECREMENT" | "NO_CHANGE";
+      };
+      copiersPnL: {
+        previous: number;
+        new: number;
+        change: number;
+        changeType: "INCREMENT" | "DECREMENT" | "NO_CHANGE";
+      };
+      aum: {
+        previous: number;
+        new: number;
+        change: number;
+        changeType: "INCREMENT" | "DECREMENT" | "NO_CHANGE";
+      };
+      riskScore: {
+        previous: number;
+        new: number;
+        change: number;
+        changeType: "INCREMENT" | "DECREMENT" | "NO_CHANGE";
+      };
+      commissionRate: {
+        previous: number;
+        new: number;
+        change: number;
+        changeType: "INCREMENT" | "DECREMENT" | "NO_CHANGE";
+      };
+      roiPercent?: {
+        previous: number;
+        new: number;
+        change: number;
+        changeType: "INCREMENT" | "DECREMENT" | "NO_CHANGE";
+      };
+      totalReturn?: {
+        previous: number;
+        new: number;
+        change: number;
+        changeType: "INCREMENT" | "DECREMENT" | "NO_CHANGE";
+      };
+      winRate?: {
+        previous: number;
+        new: number;
+        change: number;
+        changeType: "INCREMENT" | "DECREMENT" | "NO_CHANGE";
+      };
+      avgWinAmount?: {
+        previous: number;
+        new: number;
+        change: number;
+        changeType: "INCREMENT" | "DECREMENT" | "NO_CHANGE";
+      };
+      avgLossAmount?: {
+        previous: number;
+        new: number;
+        change: number;
+        changeType: "INCREMENT" | "DECREMENT" | "NO_CHANGE";
+      };
+      maxDrawdown?: {
+        previous: number;
+        new: number;
+        change: number;
+        changeType: "INCREMENT" | "DECREMENT" | "NO_CHANGE";
+      };
+      sharpeRatio?: {
+        previous: number;
+        new: number;
+        change: number;
+        changeType: "INCREMENT" | "DECREMENT" | "NO_CHANGE";
+      };
+      totalTrades?: {
+        previous: number;
+        new: number;
+        change: number;
+        changeType: "INCREMENT" | "DECREMENT" | "NO_CHANGE";
+      };
+      winningTrades?: {
+        previous: number;
+        new: number;
+        change: number;
+        changeType: "INCREMENT" | "DECREMENT" | "NO_CHANGE";
+      };
+      losingTrades?: {
+        previous: number;
+        new: number;
+        change: number;
+        changeType: "INCREMENT" | "DECREMENT" | "NO_CHANGE";
+      };
+      profitFactor?: {
+        previous: number;
+        new: number;
+        change: number;
+        changeType: "INCREMENT" | "DECREMENT" | "NO_CHANGE";
+      };
+      views?: {
+        previous: number;
+        new: number;
+        change: number;
+        changeType: "INCREMENT" | "DECREMENT" | "NO_CHANGE";
+      };
+      likes?: {
+        previous: number;
+        new: number;
+        change: number;
+        changeType: "INCREMENT" | "DECREMENT" | "NO_CHANGE";
+      };
+      comments?: {
+        previous: number;
+        new: number;
+        change: number;
+        changeType: "INCREMENT" | "DECREMENT" | "NO_CHANGE";
+      };
+      shares?: {
+        previous: number;
+        new: number;
+        change: number;
+        changeType: "INCREMENT" | "DECREMENT" | "NO_CHANGE";
+      };
+      subscribers?: {
+        previous: number;
+        new: number;
+        change: number;
+        changeType: "INCREMENT" | "DECREMENT" | "NO_CHANGE";
+      };
+    };
+    message: string;
+  };
+}

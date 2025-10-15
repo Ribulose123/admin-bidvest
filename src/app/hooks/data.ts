@@ -21,9 +21,10 @@ export interface UpdateSubscriptionBalanceRequest {
 }
 
 // Add to your Request interfaces
+// services/userApi.ts
 export interface UpdateStakingBalanceRequest {
   userId: string;
-  stakeId?: string; 
+  stakingId: string;
   totalBalance: number;
   activeBalance: number;
 }

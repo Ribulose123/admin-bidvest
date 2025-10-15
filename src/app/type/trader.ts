@@ -29,13 +29,44 @@ export interface UserFavoriteTrader {
   id: string;
 }
 
+// ADD THE MISSING INTERFACES
+export interface Follower {
+  id: string;
+  userId: string;
+  traderId: string;
+  followedAt: Date;
+}
+
+export interface Performance {
+  id: string;
+  period: string; // e.g., "DAILY", "WEEKLY", "MONTHLY"
+  roi: number;
+  pnl: number;
+  date: Date;
+}
+
+export interface FavoritedBy {
+  id: string;
+  userId: string;
+  traderId: string;
+  favoritedAt: Date;
+}
+
+export interface SocialMetrics {
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  subscribers: number;
+}
+
 // CONSOLIDATED TRADER INTERFACE
 export interface Trader {
   id: string;
   username: string;
-  profilePicture: string; // Made non-optional for EditTraderModal form
-  bio: string; // Added from EditTraderModal
-  status: "ACTIVE" | "PAUSED";
+  profilePicture: string;
+  bio: string;
+  status: 'ACTIVE' | 'PAUSED';
   maxCopiers: number;
   currentCopiers: number;
   totalCopiers: number;
@@ -43,21 +74,41 @@ export interface Trader {
   copiersPnL: number;
   aum: number;
   riskScore: number;
-  badges?: string[];
-  isVerified: boolean; // Added from EditTraderModal
+  badges: string[];
+  isVerified: boolean;
   isPublic: boolean;
   commissionRate: number;
   minCopyAmount: number;
   maxCopyAmount?: number;
   tradingPairs: string[];
-  followers: TraderFollower[]; 
-  performances: TraderPerformance[]; 
-  trades: TraderTrade[]; 
-  socialMetrics?: TraderSocialMetrics;
-  favoritedBy: UserFavoriteTrader[]; 
-  actualTrades: Trade[]; 
-  createdAt: Date | string;
-  updatedAt: Date | string;
-  copied: boolean; // Added from EditTraderModal
-  favorited: boolean; // Added from EditTraderModal
+  followers: Follower[];
+  performances: Performance[];
+  trades: Trade[];
+  socialMetrics: SocialMetrics;
+  favoritedBy: FavoritedBy[];
+  actualTrades: Trade[];
+  createdAt: Date;
+  updatedAt: Date;
+  copied: boolean;
+  favorited: boolean;
+  
+  // Add new performance fields
+  roiPercent?: number;
+  totalReturn?: number;
+  winRate?: number;
+  avgWinAmount?: number;
+  avgLossAmount?: number;
+  maxDrawdown?: number;
+  sharpeRatio?: number;
+  totalTrades?: number;
+  winningTrades?: number;
+  losingTrades?: number;
+  profitFactor?: number;
+  
+  // Add new social metrics fields
+  views?: number;
+  likes?: number;
+  comments?: number;
+  shares?: number;
+  subscribers?: number;
 }

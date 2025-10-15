@@ -11,6 +11,7 @@ import { UpdateUserModal } from "./modal/UpdateUserModal";
 interface StakingData {
   id: string;
   userId: string;
+   stakingId:string
   totalBalance: number;
   activeBalance: number;
   status: "active" | "inactive";
@@ -25,6 +26,8 @@ interface SignalData {
   strength: number;
   timestamp: string;
   stakings?: number;
+  activeSignalId:string
+
 }
 
 interface CopyStats {
@@ -160,8 +163,6 @@ const [transactionsPerPage] = useState<number>(6);
       }
 
       const responseData = await response.json();
-      console.log('User staking data:', responseData.data.userStaking);
-    console.log('User signal data:', responseData.data.userSignal)
 
       if (!responseData.data) {
         throw new Error("No user data found in response");
@@ -208,8 +209,8 @@ const [transactionsPerPage] = useState<number>(6);
 
 
  const platformAssetId = userData?.userAssets?.[0]?.platformAssetId;
-const signalId = userData?.userSignal?.id;
-const stakeId = userData?.userStaking?.id
+const signalId = userData?.userSignal?.activeSignalId;
+const stakeId = userData?.userStaking?.stakingId;
 
 // Fixed Current Balances calculation
 // Fixed Current Balances calculation
@@ -227,7 +228,7 @@ const currentBalances = {
   staking: {
     totalBalance: userData?.userStaking?.totalBalance || 0,
     activeBalance: userData?.userStaking?.activeBalance || 0,
-    stakeId: stakeId
+    stakingId: stakeId 
   }
 }
 
@@ -750,6 +751,7 @@ const currentBalances = {
     onUpdateSuccess={handleUpdateSuccess}
     platformAssetId={platformAssetId}
     signalId={signalId}
+    stakingId={currentBalances.staking.stakingId}
   />
 )}
 

@@ -1,742 +1,453 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
-import { ArrowRight, ChevronDown, Plus, Search } from "lucide-react";
+import Image from "next/image";
+import { Star } from "lucide-react";
+import { PiUsersThree } from "react-icons/pi";
+import { BiSolidUpArrow } from "react-icons/bi";
 import { API_ENDPOINT } from "../config/api";
+import { useEffect, useState } from "react";
 import { getAuthToken } from "../utils/auth";
-import CopyPerson from "./CopyPerson";
-import AddTraderForm from "./modal/AddTraderForm";
-import SyncFollowerModal from "./modal/SyncFollowerModal";
-import CreateTrade from "./CreateTrade";
-import { Trader } from "../type/transctions";
-import { useRouter } from "next/navigation";
+import EditTraderModal from "./modal/EditTraderModal";
+import { Trader, ChartData, Trade } from "../type/trader";
 
-interface CreateTraderData {
-  username: string;
-  status: "ACTIVE" | "PAUSED";
-  maxCopiers: number;
-  isVerified: boolean;
-  isPublic: boolean;
-  commissionRate: number;
-  minCopyAmount: number;
-  maxCopyAmount?: number;
-  tradingPairs: string[];
-}
+const generateChartData = (id: string, currentValue: number): ChartData => {
+  const minValue: number = 0.1;
+  const hash = id
+    .split("")
+    .reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+  const maxValue: number = 50 + (hash % 50);
+  const dataPoints: number[] = Array.from({ length: 10 }, (_, i: number) => {
+    const progress = i / 9;
+    const variation = ((hash + i) % 10) * 0.02;
+    return minValue + (currentValue - minValue) * progress * (0.9 + variation);
+  });
 
-type ModalState = "idle" | "deleting" | "success" | "error";
-
-const DeleteConfirmationModal: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  traderName: string;
-  modalState: ModalState;
-  errorMessage?: string;
-}> = ({ isOpen, onClose, onConfirm, traderName, modalState, errorMessage }) => {
-  if (!isOpen) return null;
-
-  const renderContent = () => {
-    switch (modalState) {
-      case "deleting":
-        return (
-          <>
-            <h2 className="text-xl font-bold text-white mb-4">
-              Deleting Trader
-            </h2>
-            <div className="flex flex-col items-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#F2AF29] mb-4"></div>
-              <p className="text-gray-300 text-center">
-                Removing{" "}
-                <span className="font-semibold text-[#F2AF29]">
-                  {traderName}
-                </span>
-                ...
-              </p>
-            </div>
-          </>
-        );
-
-      case "success":
-        return (
-          <>
-            <h2 className="text-xl font-bold text-white mb-4">
-              Successfully Deleted
-            </h2>
-            <div className="flex flex-col items-center">
-              <svg
-                className="w-12 h-12 text-green-500 mb-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M5 13l4 4L19 7"
-                ></path>
-              </svg>
-              <p className="text-gray-300 text-center">
-                <span className="font-semibold text-[#F2AF29]">
-                  {traderName}
-                </span>{" "}
-                has been successfully removed.
-              </p>
-            </div>
-            <div className="flex justify-end mt-6">
-              <button
-                onClick={onClose}
-                className="bg-[#01BC8D] hover:bg-green-700 text-white font-medium px-4 py-2 rounded-lg transition"
-              >
-                Close
-              </button>
-            </div>
-          </>
-        );
-
-      case "error":
-        return (
-          <>
-            <h2 className="text-xl font-bold text-white mb-4">
-              Deletion Failed
-            </h2>
-            <div className="flex flex-col items-center">
-              <svg
-                className="w-12 h-12 text-red-500 mb-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M6 18L18 6M6 6l12 12"
-                ></path>
-              </svg>
-              <p className="text-gray-300 text-center mb-2">
-                Failed to remove{" "}
-                <span className="font-semibold text-[#F2AF29]">
-                  {traderName}
-                </span>
-                .
-              </p>
-              {errorMessage && (
-                <p className="text-red-400 text-sm text-center">
-                  {errorMessage}
-                </p>
-              )}
-            </div>
-            <div className="flex justify-end space-x-4 mt-6">
-              <button
-                onClick={onClose}
-                className="bg-gray-700 hover:bg-gray-600 text-white font-medium px-4 py-2 rounded-lg transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={onConfirm}
-                className="bg-[#F23645] hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg transition"
-              >
-                Try Again
-              </button>
-            </div>
-          </>
-        );
-
-      default:
-        return (
-          <>
-            <h2 className="text-xl font-bold text-white mb-4">
-              Confirm Deletion
-            </h2>
-            <p className="text-gray-300 mb-6">
-              Are you sure you want to remove{" "}
-              <span className="font-semibold text-[#F2AF29]">{traderName}</span>
-              ? This action cannot be undone.
-            </p>
-            <div className="flex justify-end space-x-4">
-              <button
-                onClick={onClose}
-                className="bg-gray-700 hover:bg-gray-600 text-white font-medium px-4 py-2 rounded-lg transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={onConfirm}
-                className="bg-[#F23645] hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg transition"
-              >
-                Confirm
-              </button>
-            </div>
-          </>
-        );
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50">
-      <div className="bg-[#10131F] p-8 rounded-lg shadow-xl max-w-sm w-full">
-        {renderContent()}
-      </div>
-    </div>
-  );
+  return { minValue, maxValue, dataPoints };
 };
 
-const AdminCopyExpert = () => {
-  const router = useRouter()
+const CopyPerson = () => {
   const [traders, setTraders] = useState<Trader[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [filterStatus, setFilterStatus] = useState<string>("All");
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [showAddTraderModal, setShowAddTraderModal] = useState(false);
-  const [traderToDelete, setTraderToDelete] = useState<Trader | null>(null);
-  const [modalState, setModalState] = useState<ModalState>("idle");
-  const [errorMessage, setErrorMessage] = useState<string>("");
-  const [isAddingTrader, setIsAddingTrader] = useState(false);
-  const [showSyncModal, setShowSyncModal] = useState(false);
-  const [showModalCreateTrade, setShowModalCreateTrade] = useState(false);
-  const [traderToSync, setTraderToSync] = useState<Trader | null>(null);
-  const [traderToCreateTrade, setTraderToCreateTrade] = useState<Trader | null>(
-    null
-  );
+  const [error, setError] = useState<string | null>(null);
+  const [editingTrader, setEditingTrader] = useState<Trader | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
+  useEffect(() => {
+    const fetchTraders = async () => {
+      const token = getAuthToken();
+      setIsLoading(true);
+      setError(null);
 
-  const toast = React.useCallback((message: string, isError = false) => {
-    const toastDiv = document.createElement("div");
-    toastDiv.textContent = message;
-    toastDiv.style.position = "fixed";
-    toastDiv.style.bottom = "20px";
-    toastDiv.style.right = "20px";
-    toastDiv.style.padding = "10px 20px";
-    toastDiv.style.borderRadius = "8px";
-    toastDiv.style.backgroundColor = isError ? "#F23645" : "#01BC8D";
-    toastDiv.style.color = "white";
-    toastDiv.style.zIndex = "1000";
-    toastDiv.style.transition = "opacity 0.5s ease-in-out";
-    document.body.appendChild(toastDiv);
-
-    setTimeout(() => {
-      toastDiv.style.opacity = "0";
-      setTimeout(() => toastDiv.remove(), 500);
-    }, 3000);
-  }, []);
-
-  const fetchTraders = React.useCallback(async () => {
-    const token = getAuthToken();
-    setIsLoading(true);
-
-    try {
-      const response = await fetch(API_ENDPOINT.TRADERS.GET_ALL_TRADERS, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch traders: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (result.data && Array.isArray(result.data.traders)) {
-        const mappedTraders = result.data.traders.map((trader: Trader) => ({
-          ...trader,
-          createdAt: new Date(trader.createdAt),
-          updatedAt: new Date(trader.updatedAt),
-        }));
-        setTraders(mappedTraders);
-        console.log("Processed traders data:", mappedTraders);
-        
-      } else {
-        throw new Error("Invalid data format received from API");
-      }
-    } catch (err) {
-      console.error("Failed to fetch traders", err);
-      const errorMsg =
-        err instanceof Error ? err.message : "An unknown error occurred";
-      toast(`Error: ${errorMsg}`, true);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast]);
-
-  const deleteTrader = async (traderId: string, traderName: string) => {
-    const token = getAuthToken();
-    setModalState("deleting");
-
-    try {
-      const response = await fetch(
-        API_ENDPOINT.TRADERS.DELETE_TRADERS.replace("{traderId}", traderId),
-        {
-          method: "DELETE",
+      try {
+        const response = await fetch(API_ENDPOINT.TRADERS.GET_ALL_TRADERS, {
+          method: "GET",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch traders: ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (result.data && Array.isArray(result.data.traders)) {
+          const mappedTraders: Trader[] = result.data.traders.map(
+            (trader: Record<string, unknown>) => ({
+              id: trader.id as string,
+              username: (trader.username as string) || "Unknown",
+              profilePicture:
+                (trader.profilePicture as string) || "/img/Avatar DP.png",
+              bio: (trader.bio as string) || "No bio available",
+              status: (trader.status as Trader["status"]) || "PAUSED",
+              maxCopiers: (trader.maxCopiers as number) || 0,
+              currentCopiers: (trader.currentCopiers as number) || 0,
+              totalCopiers: (trader.totalCopiers as number) || 0,
+              totalPnL: (trader.totalPnL as number) || 0,
+              copiersPnL: (trader.copiersPnL as number) || 0,
+              aum: (trader.aum as number) || 0,
+              riskScore: (trader.riskScore as number) || 0,
+              badges: (trader.badges as string[]) || [],
+              isVerified: (trader.isVerified as boolean) || false,
+              isPublic: (trader.isPublic as boolean) ?? true,
+              commissionRate: (trader.commissionRate as number) || 0,
+              minCopyAmount: (trader.minCopyAmount as number) || 0,
+              maxCopyAmount: trader.maxCopyAmount as number | undefined,
+              tradingPairs: (trader.tradingPairs as string[]) || [],
+              followers: (trader.followers as Trader["followers"]) || [],
+              performances:
+                (trader.performances as Trader["performances"]) || [],
+              trades: (trader.trades as Trader["trades"]) || [],
+              socialMetrics:
+                (trader.socialMetrics as Trader["socialMetrics"]) || {
+                  views: 0,
+                  likes: 0,
+                  comments: 0,
+                  shares: 0,
+                  subscribers: 0,
+                },
+              favoritedBy: (trader.favoritedBy as Trader["favoritedBy"]) || [],
+              actualTrades: (trader.actualTrades as Trade[]) || [],
+
+              // Add new performance fields
+              roiPercent: (trader.roiPercent as number) || 0,
+              totalReturn: (trader.totalReturn as number) || 0,
+              winRate: (trader.winRate as number) || 0,
+              avgWinAmount: (trader.avgWinAmount as number) || 0,
+              avgLossAmount: (trader.avgLossAmount as number) || 0,
+              maxDrawdown: (trader.maxDrawdown as number) || 0,
+              sharpeRatio: (trader.sharpeRatio as number) || 0,
+              totalTrades: (trader.totalTrades as number) || 0,
+              winningTrades: (trader.winningTrades as number) || 0,
+              losingTrades: (trader.losingTrades as number) || 0,
+              profitFactor: (trader.profitFactor as number) || 0,
+
+              // Add new social metrics fields
+              views: (trader.views as number) || 0,
+              likes: (trader.likes as number) || 0,
+              comments: (trader.comments as number) || 0,
+              shares: (trader.shares as number) || 0,
+              subscribers: (trader.subscribers as number) || 0,
+
+              createdAt: new Date(trader.createdAt as string),
+              updatedAt: new Date(trader.updatedAt as string),
+              copied: false,
+              favorited: ((trader.favoritedBy as unknown[]) || []).length > 0,
+            })
+          );
+          setTraders(mappedTraders);
+        } else {
+          throw new Error("Invalid data format received from API");
+        }
+      } catch (err) {
+        console.error("Failed to fetch traders", err);
+        setError(
+          err instanceof Error ? err.message : "An unknown error occurred."
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchTraders();
+  }, []);
+
+  const handleEdit = (trader: Trader) => {
+    setEditingTrader(trader);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async (updatedTrader: Trader) => {
+    const token = getAuthToken();
+    setIsSaving(true);
+
+    try {
+      const payload = {
+        profilePicture: updatedTrader.profilePicture,
+        bio: updatedTrader.bio,
+        status: updatedTrader.status,
+        maxCopiers: updatedTrader.maxCopiers,
+        isVerified: updatedTrader.isVerified,
+        isPublic: updatedTrader.isPublic,
+        commissionRate: updatedTrader.commissionRate,
+        minCopyAmount: updatedTrader.minCopyAmount,
+        maxCopyAmount: updatedTrader.maxCopyAmount,
+        tradingPairs: updatedTrader.tradingPairs,
+      };
+
+      const response = await fetch(
+        API_ENDPOINT.TRADERS.EDIT_TRADERS.replace(
+          "{traderId}",
+          updatedTrader.id
+        ),
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
         }
       );
 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(
-          errorData.message || `Failed to delete trader: ${response.statusText}`
+          errorData.message || `Failed to edit trader: ${response.statusText}`
         );
       }
 
-      setTraders((prevTraders) =>
-        prevTraders.filter((trader) => trader.id !== traderId)
-      );
-      setModalState("success");
-      toast(`${traderName} was successfully removed.`);
-    } catch (err) {
-      console.error("An unknown error occurred while deleting the trader", err);
-      const errorMsg =
-        err instanceof Error ? err.message : "An unknown error occurred";
-      setErrorMessage(errorMsg);
-      setModalState("error");
-      toast(`Error: ${errorMsg}`, true);
-    }
-  };
-
-  const addTrader = async (traderData: CreateTraderData) => {
-    const token = getAuthToken();
-    setIsAddingTrader(true);
-
-    try {
-      // Validate required fields before sending to API
-      if (
-        !traderData.username ||
-        typeof traderData.username !== "string" ||
-        traderData.username.trim() === ""
-      ) {
-        throw new Error("Username must be a non-empty string");
-      }
-
-      // Create a clean payload with only the fields the API expects
-      const payload = {
-        username: traderData.username,
-        status: traderData.status,
-        maxCopiers: traderData.maxCopiers,
-        isVerified: traderData.isVerified,
-        isPublic: traderData.isPublic,
-        commissionRate: traderData.commissionRate,
-        minCopyAmount: traderData.minCopyAmount,
-        maxCopyAmount: traderData.maxCopyAmount,
-        tradingPairs: traderData.tradingPairs,
-      };
-
-      // Log the payload for debugging
-      console.log("API Payload:", payload);
-
-      const response = await fetch(API_ENDPOINT.TRADERS.ADD_TRADERS, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
       const result = await response.json();
-
-      if (!response.ok) {
-        const errorMessage =
-          result.message ||
-          result.error ||
-          `Failed to create trader: ${response.statusText}`;
-        throw new Error(errorMessage);
-      }
-
       if (result.data) {
-        // Add the new trader to the list
-        setTraders((prevTraders) => [...prevTraders, result.data]);
-        setShowAddTraderModal(false);
-        toast(`${traderData.username} was successfully added.`);
+        setTraders((prevTraders) =>
+          prevTraders.map((trader) =>
+            trader.id === result.data.id
+              ? {
+                  ...result.data,
+                  copied: trader.copied,
+                  favorited: trader.favorited,
+                }
+              : trader
+          )
+        );
+        setIsEditModalOpen(false);
       } else {
         throw new Error("Invalid response format from server");
       }
     } catch (err) {
-      console.error("Failed to add trader", err);
-      const errorMsg =
-        err instanceof Error ? err.message : "An unknown error occurred";
-      toast(`Error: ${errorMsg}`, true);
-      throw err; // Re-throw to let the form handle it
-    } finally {
-      setIsAddingTrader(false);
-    }
-  };
-
-  const handleSyncFollowers = async (traderId: string) => {
-    const token = getAuthToken();
-    try {
-      const response = await fetch(API_ENDPOINT.TRADERS.SYNC_FOLLOWERS, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ traderId }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to sync followers");
-      }
-
-      const updateTraderFollower = await response.json();
-      setTraders((prev) =>
-        prev.map((t) =>
-          t.id === traderId
-            ? { ...t, currentCopiers: updateTraderFollower.newCount }
-            : t
-        )
+      console.error("Failed to edit trader", err);
+      setError(
+        err instanceof Error ? err.message : "An unknown error occurred."
       );
-      toast("Followers synced successfully!");
-    } catch (err) {
-      console.error("Error syncing followers:", err);
-      const errorMsg =
-        err instanceof Error ? err.message : "An unknown error occurred.";
-      toast(`Sync failed: ${errorMsg}`, true);
-      throw err;
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  useEffect(() => {
-    fetchTraders();
-  }, [fetchTraders]);
-
-  const filteredCopy = useMemo(() => {
-    return traders.filter((copy) => {
-      const matchesSearch =
-        searchTerm === "" ||
-        copy.username.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus =
-        filterStatus === "All" || copy.status === filterStatus;
-      return matchesSearch && matchesStatus;
-    });
-  }, [searchTerm, filterStatus, traders]);
-
-  const handleRemoveClick = (trader: Trader) => {
-    setTraderToDelete(trader);
-    setModalState("idle");
-    setShowConfirmModal(true);
-  };
-
-  const handleConfirmDelete = () => {
-    if (traderToDelete) {
-      deleteTrader(traderToDelete.id, traderToDelete.username);
-    }
-  };
-
-  const handleCloseModal = () => {
-    setShowConfirmModal(false);
-    setTraderToDelete(null);
-    setModalState("idle");
-  };
-
-  const handleAddTrader = () => {
-    setShowAddTraderModal(true);
-  };
-
-  const handleTraderAdded = async (traderData: CreateTraderData) => {
-    try {
-      await addTrader(traderData);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const handleSyncClick = (trader: Trader) => {
-    setTraderToSync(trader);
-    setShowSyncModal(true);
-  };
-
-  const handleCreateTrade = () => {
-    setShowModalCreateTrade(true);
-  };
-
-  
-  const handleNavigationAlltrade =()=>{
-    router.push('/admin/alltrade')
-  }
-
- 
   if (isLoading) {
     return (
-      <div className="mt-6">
-        <div className="flex justify-center items-center h-64">
-          <p className="text-white">Loading traders...</p>
-        </div>
-      </div>
+      <div className="text-white text-center py-8">Loading traders...</div>
     );
   }
 
+  if (error) {
+    return <div className="text-red-500 text-center py-8">Error: {error}</div>;
+  }
+
   return (
-    <div className="min-h-screen w-full p-4 sm:p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header Section */}
-        <div className="mb-8">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-8">
-            <h1 className="text-2xl lg:text-3xl font-bold text-white">
-              Currently Copied Traders
-            </h1>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-13">
+      <h2 className="text-xl mb-6 font-semibold text-white">
+        Manage Copy Traders
+      </h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {traders.length > 0 ? (
+          traders.map((trader) => {
+            const aum = trader.aum || 1;
+            const profitPercentage =
+              aum > 0 ? ((trader.totalPnL || 0) / aum) * 100 : 0;
 
-            {/* Controls Section */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 p-4 bg-[#0f1424] rounded-xl border border-gray-800">
-              {/* Search Input */}
-              <div className="relative flex-1 min-w-[200px]">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
-                  placeholder="Search traders..."
-                  className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-[#10131F] border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#F2AF29] focus:border-transparent transition-all"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
+            const actualTrades = trader.actualTrades || [];
+            const closedTrades = actualTrades.filter(
+              (t: Trade) => t.status === "CLOSED"
+            );
+            const winRate =
+              actualTrades.length > 0
+                ? (closedTrades.length / actualTrades.length) * 100
+                : 0;
 
-              {/* Status Filter */}
-              <div className="relative min-w-[150px]">
-                <select
-                  className="w-full bg-[#10131F] border border-gray-700 text-white py-2.5 px-4 pr-8 rounded-lg leading-tight focus:outline-none focus:ring-2 focus:ring-[#F2AF29] focus:border-transparent appearance-none"
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                >
-                  <option value="All">All Status</option>
-                  <option value="ACTIVE">Active</option>
-                  <option value="PAUSED">Paused</option>
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-                  <ChevronDown className="w-4 h-4" />
+            const { minValue, maxValue, dataPoints } = generateChartData(
+              trader.id,
+              profitPercentage
+            );
+            const completionRate = "99.1%";
+            const country = "USA";
+            const traderType = "Expert";
+
+            return (
+              <div
+                key={trader.id}
+                className="bg-[#141E32]/25 border border-[#1E2A4A] rounded-xl overflow-hidden p-4 hover:border-[#2A3A5F] transition-all duration-300 hover:shadow-lg hover:shadow-[#1E2A4A]/20 cursor-pointer group flex flex-col justify-between h-full"
+              >
+                <div className="flex-grow">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <div className="w-12 h-12 bg-gradient-to-br from-[#2A3A5F] to-[#1E2A4A] rounded-full overflow-hidden flex items-center justify-center">
+                          <Image
+                            src={trader.profilePicture || "/img/Avatar DP.png"}
+                            alt={trader.username}
+                            width={48}
+                            height={48}
+                            className="w-full h-full object-cover"
+                            unoptimized
+                          />
+                        </div>
+                        {trader.status === "ACTIVE" && (
+                          <div className="absolute -right-0.5 -bottom-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-[#141E32]"></div>
+                        )}
+                      </div>
+
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-white font-medium group-hover:text-[#F2AF29] transition-colors">
+                            {trader.username}
+                          </h3>
+                          {trader.badges?.includes("Verified") && (
+                            <span className="text-[#439A86] text-xs bg-[#439A86]/10 px-1.5 py-0.5 rounded">
+                              Verified
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-gray-400">
+                            {traderType}
+                          </span>
+                          <span className="text-xs text-gray-400">•</span>
+                          <span className="text-xs text-gray-400">
+                            {country}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button className="text-gray-400 hover:text-[#F2AF29] transition-colors">
+                      <Star
+                        size={18}
+                        fill={
+                          (trader.favoritedBy || []).length > 0
+                            ? "#F2AF29"
+                            : "transparent"
+                        }
+                      />
+                    </button>
+                  </div>
+
+                  <div className="flex justify-between items-center mb-6">
+                    <div className="flex items-center gap-2 text-sm">
+                      <PiUsersThree className="text-gray-400" size={14} />
+                      <span className="text-gray-300">
+                        {trader.totalCopiers || 0} total copiers
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1 text-green-500 text-sm font-medium">
+                      <BiSolidUpArrow size={12} />
+                      <span>{profitPercentage.toFixed(2)}%</span>
+                    </div>
+                  </div>
+
+                  <div className="relative h-24 mb-6 bg-[#1E2A4A]/30 rounded-lg p-2">
+                    <div className="absolute inset-0 flex flex-col justify-between text-[8px] text-gray-500 px-1 py-2">
+                      <span>{maxValue.toFixed(1)}%</span>
+                      <span>{minValue.toFixed(1)}%</span>
+                    </div>
+
+                    <svg viewBox="0 0 100 40" className="w-full h-full">
+                      <defs>
+                        <linearGradient
+                          id={`gradient-${trader.id}`}
+                          x1="0%"
+                          y1="0%"
+                          x2="0%"
+                          y2="100%"
+                        >
+                          <stop
+                            offset="0%"
+                            stopColor="#10B981"
+                            stopOpacity="0.3"
+                          />
+                          <stop
+                            offset="100%"
+                            stopColor="#10B981"
+                            stopOpacity="0"
+                          />
+                        </linearGradient>
+                      </defs>
+
+                      <path
+                        d={`M0,40 ${dataPoints
+                          .map((value: number, i: number) => {
+                            const x = i * 10;
+                            const y =
+                              40 -
+                              ((value - minValue) / (maxValue - minValue)) * 35;
+                            return `L${x},${y}`;
+                          })
+                          .join(" ")} L100,40 Z`}
+                        fill={`url(#gradient-${trader.id})`}
+                      />
+
+                      <path
+                        d={`M0,40 ${dataPoints
+                          .map((value: number, i: number) => {
+                            const x = i * 10;
+                            const y =
+                              40 -
+                              ((value - minValue) / (maxValue - minValue)) * 35;
+                            return `L${x},${y}`;
+                          })
+                          .join(" ")}`}
+                        stroke="#10B981"
+                        strokeWidth="1.5"
+                        fill="none"
+                      />
+                    </svg>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 mb-6">
+                    <div className="bg-[#1E2A4A]/50 rounded-lg p-2 text-center">
+                      <div className="text-xs text-gray-400 mb-1">Win Rate</div>
+                      <div className="text-white font-medium">
+                        {winRate.toFixed(1)}%
+                      </div>
+                    </div>
+                    <div className="bg-[#1E2A4A]/50 rounded-lg p-2 text-center">
+                      <div className="text-xs text-gray-400 mb-1">
+                        Completed
+                      </div>
+                      <div className="text-white font-medium">
+                        {completionRate}
+                      </div>
+                    </div>
+                    <div className="bg-[#1E2A4A]/50 rounded-lg p-2 text-center">
+                      <div className="text-xs text-gray-400 mb-1">ROI 30D</div>
+                      <div className="text-green-500 font-medium">
+                        {profitPercentage.toFixed(2)}%
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 mb-6">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Total PnL</span>
+                      <span className="text-white font-medium">
+                        ${(trader.totalPnL || 0).toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Closed PnL</span>
+                      <span className="text-white font-medium">
+                        ${(trader.copiersPnL || 0).toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Open PnL</span>
+                      <span className="text-white font-medium">
+                        $
+                        {(
+                          (trader.totalPnL || 0) - (trader.copiersPnL || 0)
+                        ).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <button
+                    onClick={() => handleEdit(trader)}
+                    className="w-full py-3 bg-gradient-to-r from-[#F2AF29] to-[#E6A522] hover:from-[#E6A522] hover:to-[#D99C1F] text-[#01040F] font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-md hover:shadow-[#F2AF29]/20"
+                  >
+                    Edit
+                  </button>
                 </div>
               </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-3">
-                <button
-                  className="bg-[#F2AF29] hover:bg-[#ff8c00] text-white px-4 py-2.5 rounded-lg font-medium flex items-center justify-center gap-2 transition-all duration-200 hover:scale-105 min-w-[120px]"
-                  onClick={handleAddTrader}
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Trader
-                </button>
-                <button
-                  className="bg-[#01BC8D] hover:bg-[#00a87c] text-white px-4 py-2.5 rounded-lg font-medium flex items-center justify-center gap-2 transition-all duration-200 hover:scale-105 min-w-[140px]"
-                  onClick={handleCreateTrade}
-                >
-                  <Plus className="w-4 h-4" />
-                  Create Trade
-
-                </button>
-
-                 <button
-                  className="bg-[#01BC8D] hover:bg-[#00a87c] text-white px-4 py-2.5 rounded-lg font-medium flex items-center justify-center gap-2 transition-all duration-200 hover:scale-105 min-w-[140px]"
-                  onClick={handleNavigationAlltrade}
-                >
-                  Get all trade
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Table Section */}
-          <div className="bg-[#0a0f1f] rounded-xl border border-gray-800 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-[#060A17] border-b border-gray-800">
-                  <tr>
-                    <th className="px-4 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider whitespace-nowrap">
-                      Trader ID
-                    </th>
-                    <th className="px-4 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider whitespace-nowrap">
-                      Trader Name
-                    </th>
-                    <th className="px-4 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider whitespace-nowrap">
-                      Strategy Type
-                    </th>
-                    <th className="px-4 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider whitespace-nowrap">
-                      P&L (%)
-                    </th>
-                    <th className="px-4 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider whitespace-nowrap">
-                      Followers
-                    </th>
-                    <th className="px-4 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider whitespace-nowrap">
-                      Risk Score
-                    </th>
-                    <th className="px-4 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider whitespace-nowrap">
-                      Status
-                    </th>
-                    <th className="px-4 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider whitespace-nowrap">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-800">
-                  {filteredCopy.length > 0 ? (
-                    filteredCopy.map((copy) => (
-                      <tr
-                        key={copy.id}
-                        className="hover:bg-[#0f1424] transition-colors"
-                      >
-                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-200">
-                          <span className="font-mono text-xs bg-[#10131F] px-2 py-1 rounded">
-                            {copy.id}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm font-semibold text-white">
-                          {copy.username}
-                        </td>
-                        <td className="px-4 py-4 text-sm text-gray-300 max-w-[200px] truncate">
-                          {(copy.tradingPairs || []).join(", ")}
-                        </td>
-                        <td
-                          className={`px-4 py-4 whitespace-nowrap text-sm font-bold ${
-                            (copy.totalPnL || 0) >= 0
-                              ? "text-green-400"
-                              : "text-red-400"
-                          }`}
-                        >
-                          {(copy.totalPnL || 0).toFixed(2)}%
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">
-                          <span className="bg-[#10131F] px-3 py-1 rounded-full">
-                            {copy.currentCopiers || 0}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm">
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              (copy.riskScore || 0) <= 3
-                                ? "bg-green-900/30 text-green-400"
-                                : (copy.riskScore || 0) <= 7
-                                ? "bg-yellow-900/30 text-yellow-400"
-                                : "bg-red-900/30 text-red-400"
-                            }`}
-                          >
-                            {copy.riskScore || "N/A"}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <span
-                            className={`px-3 py-1.5 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              copy.status === "ACTIVE"
-                                ? "bg-green-900/30 text-green-400 border border-green-800/50"
-                                : "bg-yellow-900/30 text-yellow-400 border border-yellow-800/50"
-                            }`}
-                          >
-                            {copy.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <button
-                              onClick={() => handleRemoveClick(copy)}
-                              className="px-3 py-1.5 bg-red-900/30 hover:bg-red-900/50 text-red-400 text-xs font-medium rounded-lg transition-colors border border-red-800/50"
-                            >
-                              Remove
-                            </button>
-                            <button
-                              onClick={() => handleSyncClick(copy)}
-                              className="px-3 py-1.5 bg-blue-900/30 hover:bg-blue-900/50 text-blue-400 text-xs font-medium rounded-lg transition-colors border border-blue-800/50"
-                            >
-                              Sync
-                            </button>
-                           
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td
-                        colSpan={8}
-                        className="px-4 py-8 text-center text-gray-400"
-                      >
-                        <div className="flex flex-col items-center justify-center">
-                          <Search className="w-12 h-12 text-gray-600 mb-2" />
-                          <p className="text-lg font-medium">
-                            No traders found
-                          </p>
-                          <p className="text-sm text-gray-500 mt-1">
-                            Try adjusting your search or filter criteria
-                          </p>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* View More Footer */}
-            {filteredCopy.length > 0 && (
-              <div className="px-6 py-4 bg-[#060A17] border-t border-gray-800">
-                <button className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors ml-auto">
-                  View More Traders
-                  <ArrowRight size={16} />
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* CopyPerson Component */}
-        <div className="mt-8">
-          <CopyPerson />
-        </div>
-
-        {/* Modals - They remain the same */}
-        {showConfirmModal && traderToDelete && (
-          <DeleteConfirmationModal
-            isOpen={showConfirmModal}
-            onClose={handleCloseModal}
-            onConfirm={handleConfirmDelete}
-            traderName={traderToDelete.username}
-            modalState={modalState}
-            errorMessage={errorMessage}
-          />
+            );
+          })
+        ) : (
+          <p className="col-span-3 text-center text-gray-400 py-12">
+            No traders found.
+          </p>
         )}
-
-        {showAddTraderModal && (
-          <AddTraderForm
-            onClose={() => setShowAddTraderModal(false)}
-            onTraderAdded={handleTraderAdded}
-            isLoading={isAddingTrader}
-          />
-        )}
-
-        {showSyncModal && traderToSync && (
-          <SyncFollowerModal
-            isOpen={showSyncModal}
-            onClose={() => setShowSyncModal(false)}
-            onSync={handleSyncFollowers}
-            trader={traderToSync}
-          />
-        )}
-  {showModalCreateTrade && (
-  <CreateTrade
-    isOpen={showModalCreateTrade}
-    onClose={() => {
-      setShowModalCreateTrade(false);
-      setTraderToCreateTrade(null);
-    }}
-    onTradeCreated={() => {
-      fetchTraders(); // Just refresh data
-      setShowModalCreateTrade(false);
-      setTraderToCreateTrade(null);
-    }}
-    preSelectedTraderId={traderToCreateTrade?.id}
-  />
-)}
-       
       </div>
+      <EditTraderModal
+        trader={editingTrader}
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSave={handleSaveEdit}
+        isLoading={isSaving}
+      />
     </div>
   );
 };
 
-export default AdminCopyExpert;
+export default CopyPerson;
