@@ -210,6 +210,7 @@ const [transactionsPerPage] = useState<number>(6);
  const platformAssetId = userData?.userAssets?.[0]?.platformAssetId;
 const signalId = userData?.userSignal?.id;
 const stakeId = userData?.userStaking?.id
+
 // Fixed Current Balances calculation
 // Fixed Current Balances calculation
 const currentBalances = {

@@ -22,7 +22,8 @@ export const API_ENDPOINT={
         ADMIN_CREATE_STAKING: `${API_BASE_URL}/staking/create`,
         GET_ALL_STAKING:`${API_BASE_URL}/staking`,
         UPDATE_STAKING:`${API_BASE_URL}/staking/update/{id}`,
-        DELETE_STAKING: `${API_BASE_URL}/staking/delete/{id}`
+        DELETE_STAKING: `${API_BASE_URL}/staking/delete/{id}`,
+        GET_STAKING:`${API_BASE_URL}/staking/{id}`
     },
 
     SUBSCRIPTION:{

@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { getAuthToken } from "../utils/auth";
 import { API_ENDPOINT } from "../config/api";
-/* import { useRouter } from "next/navigation"; */
 
 interface Transaction {
   id: string;
@@ -24,6 +23,16 @@ interface Transaction {
   type: string;
   status: string;
   createdAt: string;
+}
+
+interface StakingConfig {
+  id: string;
+  min: number;
+  max: number;
+  price: number;
+  cycle: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 const AdminDeposit = () => {
@@ -42,80 +51,83 @@ const AdminDeposit = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [stakingConfig, setStakingConfig] = useState<StakingConfig | null>(null);
+  const [loadingConfig, setLoadingConfig] = useState(false);
+  const [configError, setConfigError] = useState<string | null>(null);
   const actionMenuRef = useRef<HTMLDivElement>(null);
- /*  const router = useRouter(); */
-useEffect(() => {
-  const fetchFilteredTransactions = async () => {
-    const token = getAuthToken();
-    setIsLoading(true);
-    setError(null);
 
-    if (!token) {
-      setError('No authentication token found. Please log in.');
-      setIsLoading(false);
-      return;
-    }
+  useEffect(() => {
+    const fetchFilteredTransactions = async () => {
+      const token = getAuthToken();
+      setIsLoading(true);
+      setError(null);
 
-    try {
-      let allFilteredTransactions: Transaction[] = [];
-      let currentPage = 1;
-      let totalPages = 1;
-      let hasMorePages = true;
+      if (!token) {
+        setError('No authentication token found. Please log in.');
+        setIsLoading(false);
+        return;
+      }
 
-      const allowedTypes = [
-        "DEPOSIT",
-        "SIGNAL",
-        "STAKING",
-        "SUBSCRIPTION"
-      ];
+      try {
+        let allFilteredTransactions: Transaction[] = [];
+        let currentPage = 1;
+        let totalPages = 1;
+        let hasMorePages = true;
 
-      while (hasMorePages && currentPage <= totalPages) {
-        const response = await fetch(
-          `${API_ENDPOINT.TRANSACTION.GET_TRANSACTIONS}?page=${currentPage}&limit=50`,
-          {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
+        const allowedTypes = [
+          "DEPOSIT",
+          "SIGNAL",
+          "STAKING",
+          "SUBSCRIPTION"
+        ];
+
+        while (hasMorePages && currentPage <= totalPages) {
+          const response = await fetch(
+            `${API_ENDPOINT.TRANSACTION.GET_TRANSACTIONS}?page=${currentPage}&limit=50`,
+            {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              }
             }
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-
-        if (result.statusCode === 200 && result.data) {
-          const filteredTransactions = result.data.filter(
-            (transaction: Transaction) => allowedTypes.includes(transaction.type)
           );
 
-          allFilteredTransactions = [...allFilteredTransactions, ...filteredTransactions];
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
 
-          totalPages = result.pagination?.totalPages || 1;
-          hasMorePages = result.pagination?.hasNextPage || false;
-          currentPage++;
-        } else {
-          throw new Error(result.message || 'Failed to fetch transactions');
+          const result = await response.json();
+
+          if (result.statusCode === 200 && result.data) {
+            const filteredTransactions = result.data.filter(
+              (transaction: Transaction) => allowedTypes.includes(transaction.type)
+            );
+
+            allFilteredTransactions = [...allFilteredTransactions, ...filteredTransactions];
+
+            totalPages = result.pagination?.totalPages || 1;
+            hasMorePages = result.pagination?.hasNextPage || false;
+            currentPage++;
+          } else {
+            throw new Error(result.message || 'Failed to fetch transactions');
+          }
         }
-      }
 
-      setTransactions(allFilteredTransactions);
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('An unknown error occurred while fetching transactions.');
+        setTransactions(allFilteredTransactions);
+      } catch (err) {
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError('An unknown error occurred while fetching transactions.');
+        }
+      } finally {
+        setIsLoading(false);
       }
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
 
-  fetchFilteredTransactions();
-}, []);
+    fetchFilteredTransactions();
+  }, []);
 
   useEffect(() => {
     if (successMessage) {
@@ -126,6 +138,51 @@ useEffect(() => {
       return () => clearTimeout(timer);
     }
   }, [successMessage]);
+
+  const findStakingConfig = (transaction: Transaction, availableConfigs: StakingConfig[]) => {
+    const matchingConfig = availableConfigs.find(config => {
+      return transaction.amount >= config.min && transaction.amount <= config.max;
+    });
+    
+    return matchingConfig || null;
+  };
+
+  const fetchStakingConfig = useCallback(async (transaction: Transaction) => {
+    setLoadingConfig(true);
+    setConfigError(null);
+    setStakingConfig(null);
+    
+    try {
+      const token = getAuthToken();
+      const allStakingsUrl = API_ENDPOINT.STAKE.GET_STAKING.replace('/{id}', '');
+      
+      const response = await fetch(allStakingsUrl, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch staking configs: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      const config = findStakingConfig(transaction, result.data);
+      
+      if (config) {
+        setStakingConfig(config);
+      } else {
+        throw new Error("No staking configuration matches transaction amount range");
+      }
+
+    } catch (err) {
+      setConfigError(err instanceof Error ? err.message : 'Failed to load staking configuration');
+    } finally {
+      setLoadingConfig(false);
+    }
+  }, []);
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter((transaction) => {
@@ -231,15 +288,12 @@ useEffect(() => {
       const viewportWidth = window.innerWidth;
       const menuWidth = 160;
       
-      // Calculate position to the right of the button first
       let left = rect.right + window.scrollX + 5;
       
-      // If menu would go off screen to the right, position to the left
       if (left + menuWidth > viewportWidth) {
         left = rect.left + window.scrollX - menuWidth - 5;
       }
       
-      // Ensure menu doesn't go off screen to the left
       if (left < 0) {
         left = 5;
       }
@@ -271,59 +325,59 @@ useEffect(() => {
     };
   }, []);
 
- const updateTransactionStatus = useCallback(async (transactionId: string, newStatus: string) => {
+  const updateTransactionStatus = useCallback(async (transactionId: string, newStatus: string) => {
     const token = getAuthToken();
     if (!token) {
-        setError('No authentication token found. Please log in.');
-        return false;
+      setError('No authentication token found. Please log in.');
+      return false;
     }
 
     const transactionToUpdate = transactions.find(t => t.id === transactionId);
     if (!transactionToUpdate) {
-        setError('Transaction not found.');
-        return false;
+      setError('Transaction not found.');
+      return false;
     }
 
     try {
-        const endpoint = API_ENDPOINT.ADMIN.UPDATE_TRANSACTION.replace('{transactionId}', transactionId);
+      const endpoint = API_ENDPOINT.ADMIN.UPDATE_TRANSACTION.replace('{transactionId}', transactionId);
 
-        const response = await fetch(endpoint, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-                status: newStatus,
-                amount: transactionToUpdate.amount
-            })
-        });
+      const requestBody = {
+        status: newStatus,
+        amount: newStatus === 'COMPLETED' && transactionToUpdate.type === 'STAKING' && stakingConfig
+          ? Number(stakingConfig.price)
+          : Number(transactionToUpdate.amount)
+      };
 
-        const result = await response.json();
-        console.log("Update transaction API result:", result);
+      const response = await fetch(endpoint, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(requestBody)
+      });
 
-        if (response.ok) {
-            // ✅ Update state
-            setTransactions(prev => prev.map(transaction =>
-                transaction.id === transactionId
-                    ? { ...transaction, status: newStatus }
-                    : transaction
-            ));
+      const result = await response.json();
 
-            setError(null);
-            setSuccessMessage(result.message || `Transaction status updated to ${newStatus} successfully!`);
-            return true;
-        } else {
-            throw new Error(result.message || `Failed to update transaction status (HTTP ${response.status})`);
-        }
+      if (response.ok) {
+        setTransactions(prev => prev.map(transaction =>
+          transaction.id === transactionId
+            ? { ...transaction, status: newStatus }
+            : transaction
+        ));
+
+        setError(null);
+        setSuccessMessage(result.message || `Transaction status updated to ${newStatus} successfully!`);
+        return true;
+      } else {
+        throw new Error(result.message || `Failed to update transaction status (HTTP ${response.status})`);
+      }
 
     } catch (err) {
-        console.error("Failed to update transaction status:", err);
-        setError(err instanceof Error ? err.message : 'An unknown error occurred while updating transaction status.');
-        return false;
+      setError(err instanceof Error ? err.message : 'An unknown error occurred while updating transaction status.');
+      return false;
     }
-}, [transactions, setError]);
-
+  }, [transactions, stakingConfig]);
 
   const deleteTransaction = useCallback(async (transactionId: string) => {
     const token = getAuthToken();
@@ -344,7 +398,6 @@ useEffect(() => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'No detailed error message from server' }));
-        console.error("Failed to delete transaction:", errorData);
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 
@@ -358,7 +411,6 @@ useEffect(() => {
         throw new Error(result.message || 'Failed to delete transaction');
       }
     } catch (err) {
-      console.error("Failed to delete transaction:", err);
       if (err instanceof Error) {
         setError(err.message);
       } else {
@@ -398,13 +450,27 @@ useEffect(() => {
   }, [selectedTransactionId, updateTransactionStatus]);
 
   const handleView = useCallback(() => {
-    const transaction = transactions.find(t => t.id === selectedTransactionId);
-    if (transaction) {
-      setSelectedTransaction(transaction);
-      setShowTransactionModal(true);
+    if (!selectedTransactionId) {
+      console.error("No transaction ID selected");
+      return;
     }
+
+    const transaction = transactions.find(t => t.id === selectedTransactionId);
+    
+    if (!transaction) {
+      console.error("Transaction not found for ID:", selectedTransactionId);
+      return;
+    }
+
+    setSelectedTransaction(transaction);
+    setShowTransactionModal(true);
+
+    if (transaction.type === 'STAKING') {
+      fetchStakingConfig(transaction);
+    }
+    
     setShowActionMenu(false);
-  }, [selectedTransactionId, transactions]);
+  }, [selectedTransactionId, transactions, fetchStakingConfig]);
 
   const handleConfirm = useCallback(async () => {
     if (selectedTransaction) {
@@ -440,9 +506,6 @@ useEffect(() => {
     return ['All', ...types];
   }, [transactions]);
 
- /*  const handleNavigation = (id:string)=>{
-    router.push(`/admin/deposit/${id}`)
-  } */
   return (
     <div className="min-h-screen text-gray-100 p-8 font-inter ">
       <div className="max-w-7xl mx-auto">
@@ -681,12 +744,14 @@ useEffect(() => {
 
         {showTransactionModal && selectedTransaction && (
           <div className="fixed inset-0 bg-black/65 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
               <div className="p-6">
                 <div className="flex justify-between items-center">
                   <div>
                     <h2 className="text-xl font-semibold text-gray-900 mb-2">Transaction Details</h2>
-                    <p className="text-sm text-gray-600 mb-6">Transaction Information</p>
+                    <p className="text-sm text-gray-600 mb-6">
+                      {selectedTransaction.type === 'STAKING' ? 'Staking Transaction Information' : 'Transaction Information'}
+                    </p>
                   </div>
                   <button 
                     onClick={() => setShowTransactionModal(false)}
@@ -697,52 +762,122 @@ useEffect(() => {
                   </button>
                 </div>
 
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Transaction ID</span>
-                    <span className="text-sm text-gray-900 font-mono">{selectedTransaction.id}</span>
-                  </div>
-
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Type</span>
-                    <span className="text-sm text-gray-900">{selectedTransaction.type}</span>
-                  </div>
-
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">User ID</span>
-                    <span className="text-sm text-gray-900">{selectedTransaction.userId}</span>
-                  </div>
-
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Date Created</span>
-                    <span className="text-sm text-gray-900">{formatDate(selectedTransaction.createdAt)}</span>
-                  </div>
-
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Amount</span>
-                    <span className="text-sm text-gray-900">${selectedTransaction.amount.toFixed(2)}</span>
-                  </div>
-
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Status</span>
-                    <span className={`text-sm font-medium ${
-                      selectedTransaction.status === "COMPLETED" ? "text-green-600" :
-                        selectedTransaction.status === "PENDING" ? "text-yellow-600" :
-                          "text-red-600"
-                    }`}>
-                      {selectedTransaction.status}
-                    </span>
-                  </div>
-
-                  {selectedTransaction.platformAssetId && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-gray-900 border-b pb-2">Transaction Details</h3>
+                    
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Platform Asset ID</span>
-                      <span className="text-sm text-gray-900">{selectedTransaction.platformAssetId}</span>
+                      <span className="text-sm text-gray-600">Transaction ID</span>
+                      <span className="text-sm text-gray-900 font-mono">{selectedTransaction.id}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Type</span>
+                      <span className="text-sm text-gray-900">{selectedTransaction.type}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">User ID</span>
+                      <span className="text-sm text-gray-900">{selectedTransaction.userId}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Date Created</span>
+                      <span className="text-sm text-gray-900">{formatDate(selectedTransaction.createdAt)}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">User Amount</span>
+                      <span className="text-sm text-gray-900 font-semibold">
+                        ${selectedTransaction.amount.toFixed(2)}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Status</span>
+                      <span className={`text-sm font-medium ${
+                        selectedTransaction.status === "COMPLETED" ? "text-green-600" :
+                          selectedTransaction.status === "PENDING" ? "text-yellow-600" :
+                            "text-red-600"
+                      }`}>
+                        {selectedTransaction.status}
+                      </span>
+                    </div>
+
+                    {selectedTransaction.platformAssetId && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Platform Asset ID</span>
+                        <span className="text-sm text-gray-900">{selectedTransaction.platformAssetId}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {selectedTransaction.type === 'STAKING' && (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium text-gray-900 border-b pb-2">Staking Configuration</h3>
+                      
+                      {loadingConfig && (
+                        <div className="flex items-center justify-center py-4">
+                          <Loader className="w-5 h-5 animate-spin mr-2" />
+                          <span className="text-sm text-gray-600">Loading staking configuration...</span>
+                        </div>
+                      )}
+                      
+                      {configError && (
+                        <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                          <p className="text-sm text-red-600">{configError}</p>
+                        </div>
+                      )}
+                      
+                      {stakingConfig && !loadingConfig && (
+                        <>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Staking ID</span>
+                            <span className="text-sm text-gray-900 font-mono">
+                              {stakingConfig.id}
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Minimum Amount</span>
+                            <span className="text-sm text-gray-900 font-semibold">
+                              ${stakingConfig.min.toFixed(2)}
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Maximum Amount</span>
+                            <span className="text-sm text-gray-900 font-semibold">
+                              ${stakingConfig.max.toFixed(2)}
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Staking Price</span>
+                            <span className="text-sm text-green-600 font-semibold">
+                              ${stakingConfig.price.toFixed(2)}
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Cycle</span>
+                            <span className="text-sm text-gray-900">
+                              {stakingConfig.cycle}
+                            </span>
+                          </div>
+
+                          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p className="text-sm text-blue-800">
+                              User will be charged ${stakingConfig.price.toFixed(2)} when completed
+                            </p>
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
 
-                <div className="flex gap-3 mt-8">
+                <div className="flex gap-3 mt-8 pt-6 border-t border-gray-200">
                   <button
                     onClick={handleReject}
                     disabled={actionLoading !== null}
@@ -752,18 +887,21 @@ useEffect(() => {
                       <><Loader className="w-4 h-4 mr-2 animate-spin" /> Rejecting...</>
                     ) : (
                       'Reject'
-                    )
-                    }
+                    )}
                   </button>
                   <button
                     onClick={handleConfirm}
-                    disabled={actionLoading !== null}
+                    disabled={actionLoading !== null || (selectedTransaction.type === 'STAKING' && !stakingConfig)}
                     className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center"
                   >
                     {actionLoading === `confirm-${selectedTransaction.id}` ? (
                       <><Loader className="w-4 h-4 mr-2 animate-spin" /> Confirming...</>
                     ) : (
-                      'Confirm'
+                      `Confirm ${
+                        selectedTransaction.type === 'STAKING' && stakingConfig 
+                          ? `($${stakingConfig.price})`
+                          : ''
+                      }`
                     )}
                   </button>
                 </div>

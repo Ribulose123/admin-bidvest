@@ -49,7 +49,7 @@ export const UpdateBalanceModal: React.FC<UpdateBalanceModalProps> = ({
   signalId,
   stakeId
 }) => {
-  const balanceFields = useMemo((): Record<string, BalanceField[]> => ({
+   const balanceFields = useMemo((): Record<string, BalanceField[]> => ({
     asset: [
       { name: 'balance', label: 'Asset Balance', type: 'number', required: true, step: '0.01', min: 0 }
     ],
@@ -60,10 +60,12 @@ export const UpdateBalanceModal: React.FC<UpdateBalanceModalProps> = ({
     subscription: [
       { name: 'subscriptionBalance', label: 'Subscription Balance', type: 'number', required: true, step: '0.01', min: 0 }
     ],
-     staking: [
-    { name: 'totalBalance', label: 'Total Staking Balance', type: 'number', required: true, step: '0.01', min: 0 },
-     ]
+    staking: [
+      { name: 'totalBalance', label: 'Total Staking Balance', type: 'number', required: true, step: '0.01', min: 0 },
+      { name: 'activeBalance', label: 'Active Staking Balance', type: 'number', required: true, step: '0.01', min: 0 },
+    ]
   }), []);
+
 
   const [formData, setFormData] = useState<Record<string, string | number>>({});
   const [loading, setLoading] = useState(false);

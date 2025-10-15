@@ -112,6 +112,8 @@ const AdminUserManagement = () => {
   const [kycActionsLoading, setKycActionsLoading] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [filterOutcome, setFilterOutcome] = useState<string>("All");
+  const [showPreviewModal, setShowPreviewModal] = useState<boolean>(false);
+const [pendingWithdrawalCode, setPendingWithdrawalCode] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage] = useState<number>(14);
   const [pagination, setPagination] = useState<PaginationInfo>({
@@ -300,57 +302,69 @@ const AdminUserManagement = () => {
   }, [searchTerm, filterOutcome, fetchAllUsers]);
 
 
-  const handleUpdateWithdrawalCode = async () => {
-    if (!withdrawalCode.trim()) {
-      setWithdrawalCodeError("Withdrawal code cannot be empty");
-      return;
+const handleOpenPreview = () => {
+  if (!withdrawalCode.trim()) {
+    setWithdrawalCodeError("Withdrawal code cannot be empty");
+    return;
+  }
+  
+  if (withdrawalCode.trim().length < 4) {
+    setWithdrawalCodeError("Withdrawal code must be at least 4 characters");
+    return;
+  }
+  
+  setPendingWithdrawalCode(withdrawalCode.trim());
+  setShowPreviewModal(true);
+  setWithdrawalCodeError(null);
+};
+
+const handleConfirmUpdate = async () => {
+  setIsUpdatingWithdrawalCode(true);
+  setWithdrawalCodeError(null);
+  setWithdrawalCodeSuccess(null);
+
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) throw new Error("No authentication token found");
+
+    const response = await fetch(API_ENDPOINT.TRADERS.UPADATE_WITHDRAWAL_CODE, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        withdrawalCode: pendingWithdrawalCode,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to update withdrawal code: ${response.status}`);
     }
 
-    setIsUpdatingWithdrawalCode(true);
-    setWithdrawalCodeError(null);
-    setWithdrawalCodeSuccess(null);
-
-    try {
-      const token = localStorage.getItem("authToken");
-      if (!token) throw new Error("No authentication token found");
-
-      const response = await fetch(API_ENDPOINT.TRADERS.UPADATE_WITHDRAWAL_CODE, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          withdrawalCode: withdrawalCode.trim(),
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to update withdrawal code: ${response.status}`);
-      }
-
-      const result: WithdrawalCodeResponse = await response.json();
-      setWithdrawalCodeSuccess(result.data.message || "Withdrawal code updated successfully");
-      
-      // Clear form and close modal after success
-      setTimeout(() => {
-        setWithdrawalCode("");
-        setShowWithdrawalCodeModal(false);
-        setWithdrawalCodeSuccess(null);
-      }, 2000);
-      
-    } catch (err) {
-      console.error("Error updating withdrawal code:", err);
-      setWithdrawalCodeError(
-        err instanceof Error 
-          ? err.message 
-          : "An error occurred while updating withdrawal code"
-      );
-    } finally {
-      setIsUpdatingWithdrawalCode(false);
-    }
-  };
-
+    const result: WithdrawalCodeResponse = await response.json();
+    setWithdrawalCodeSuccess(result.data.message || "Withdrawal code updated successfully");
+    
+    // Clear form and close modals after success
+    setTimeout(() => {
+      setWithdrawalCode("");
+      setPendingWithdrawalCode("");
+      setShowWithdrawalCodeModal(false);
+      setShowPreviewModal(false);
+      setWithdrawalCodeSuccess(null);
+    }, 2000);
+    
+  } catch (err) {
+    console.error("Error updating withdrawal code:", err);
+    setWithdrawalCodeError(
+      err instanceof Error 
+        ? err.message 
+        : "An error occurred while updating withdrawal code"
+    );
+  } finally {
+    setIsUpdatingWithdrawalCode(false);
+  }
+};
   const usersWithCalculatedFields = useMemo(() => {
     if (!Array.isArray(users)) return [];
     return users.map((user) => {
@@ -866,76 +880,143 @@ const AdminUserManagement = () => {
         )}
 
         {/* Withdrawal Code Update Modal */}
-        {showWithdrawalCodeModal && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-[#1E293B] rounded-lg shadow-xl max-w-md w-full">
-              <div className="p-6 border-b border-gray-700 flex justify-between items-center">
-                <h3 className="text-xl font-semibold">Update Withdrawal Code</h3>
-                <button
-                  onClick={() => {
-                    setShowWithdrawalCodeModal(false);
-                    setWithdrawalCode("");
-                    setWithdrawalCodeError(null);
-                    setWithdrawalCodeSuccess(null);
-                  }}
-                  className="text-gray-400 hover:text-white transition-colors"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-              
-              <div className="p-6">
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    New Withdrawal Code
-                  </label>
-                  <input
-                    type="text"
-                    value={withdrawalCode}
-                    onChange={(e) => setWithdrawalCode(e.target.value)}
-                    placeholder="Enter new withdrawal code"
-                    className="w-full px-3 py-2 bg-[#10131F] border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#F2AF29]"
-                  />
-                  {withdrawalCodeError && (
-                    <p className="text-red-400 text-sm mt-2">{withdrawalCodeError}</p>
-                  )}
-                  {withdrawalCodeSuccess && (
-                    <p className="text-green-400 text-sm mt-2">{withdrawalCodeSuccess}</p>
-                  )}
-                </div>
-                
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      setShowWithdrawalCodeModal(false);
-                      setWithdrawalCode("");
-                      setWithdrawalCodeError(null);
-                      setWithdrawalCodeSuccess(null);
-                    }}
-                    className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-                    disabled={isUpdatingWithdrawalCode}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleUpdateWithdrawalCode}
-                    disabled={isUpdatingWithdrawalCode || !withdrawalCode.trim()}
-                    className="flex-1 bg-[#F2AF29] hover:bg-[#e6a025] text-black font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center"
-                  >
-                    {isUpdatingWithdrawalCode ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2"></div>
-                        Updating...
-                      </>
-                    ) : (
-                      "Update Code"
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
+      {showWithdrawalCodeModal && (
+  <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+    <div className="bg-[#1E293B] rounded-lg shadow-xl max-w-md w-full">
+      <div className="p-6 border-b border-gray-700 flex justify-between items-center">
+        <h3 className="text-xl font-semibold">Update Withdrawal Code</h3>
+        <button
+          onClick={() => {
+            setShowWithdrawalCodeModal(false);
+            setWithdrawalCode("");
+            setWithdrawalCodeError(null);
+            setWithdrawalCodeSuccess(null);
+          }}
+          className="text-gray-400 hover:text-white transition-colors"
+        >
+          <X className="w-6 h-6" />
+        </button>
+      </div>
+      
+      <div className="p-6">
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            New Withdrawal Code
+          </label>
+          <input
+            type="text"
+            value={withdrawalCode}
+            onChange={(e) => setWithdrawalCode(e.target.value)}
+            placeholder="Enter new withdrawal code"
+            className="w-full px-3 py-2 bg-[#10131F] border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#F2AF29]"
+          />
+          <p className="text-xs text-gray-400 mt-2">
+            Must be at least 4 characters long
+          </p>
+          {withdrawalCodeError && (
+            <p className="text-red-400 text-sm mt-2">{withdrawalCodeError}</p>
+          )}
+          {withdrawalCodeSuccess && (
+            <p className="text-green-400 text-sm mt-2">{withdrawalCodeSuccess}</p>
+          )}
+        </div>
+        
+        <div className="flex gap-3">
+          <button
+            onClick={() => {
+              setShowWithdrawalCodeModal(false);
+              setWithdrawalCode("");
+              setWithdrawalCodeError(null);
+              setWithdrawalCodeSuccess(null);
+            }}
+            className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleOpenPreview}
+            disabled={!withdrawalCode.trim()}
+            className="flex-1 bg-[#F2AF29] hover:bg-[#e6a025] text-black font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+          >
+            Preview Update
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* Add this new preview modal */}
+{showPreviewModal && (
+  <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+    <div className="bg-[#1E293B] rounded-lg shadow-xl max-w-md w-full">
+      <div className="p-6 border-b border-gray-700 flex justify-between items-center">
+        <h3 className="text-xl font-semibold">Confirm Withdrawal Code Update</h3>
+        <button
+          onClick={() => {
+            setShowPreviewModal(false);
+            setPendingWithdrawalCode("");
+          }}
+          className="text-gray-400 hover:text-white transition-colors"
+          disabled={isUpdatingWithdrawalCode}
+        >
+          <X className="w-6 h-6" />
+        </button>
+      </div>
+      
+      <div className="p-6">
+        <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+          <div className="flex items-center gap-2 text-yellow-300 mb-2">
+            <Key className="w-4 h-4" />
+            <span className="font-semibold">Please confirm the new withdrawal code:</span>
           </div>
+          <div className="text-center">
+            <code className="text-2xl font-mono font-bold text-white bg-black/30 px-4 py-3 rounded border border-gray-600 inline-block min-w-[200px]">
+              {pendingWithdrawalCode}
+            </code>
+          </div>
+          <p className="text-sm text-gray-300 mt-3 text-center">
+            This will immediately update the withdrawal code for all traders.
+          </p>
+        </div>
+        
+        {withdrawalCodeError && (
+          <p className="text-red-400 text-sm mt-2 p-3 bg-red-900/20 rounded-lg">{withdrawalCodeError}</p>
         )}
+        {withdrawalCodeSuccess && (
+          <p className="text-green-400 text-sm mt-2 p-3 bg-green-900/20 rounded-lg">{withdrawalCodeSuccess}</p>
+        )}
+        
+        <div className="flex gap-3">
+          <button
+            onClick={() => {
+              setShowPreviewModal(false);
+              setPendingWithdrawalCode("");
+            }}
+            className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+            disabled={isUpdatingWithdrawalCode}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleConfirmUpdate}
+            disabled={isUpdatingWithdrawalCode}
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center"
+          >
+            {isUpdatingWithdrawalCode ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Updating...
+              </>
+            ) : (
+              "Confirm Update"
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
         <div className="flex flex-col md:flex-row items-center justify-between mt-6 text-sm text-gray-300">
           <div className="mb-4 md:mb-0">
